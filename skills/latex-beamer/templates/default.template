@@ -1,0 +1,31 @@
+\documentclass{article}
+\usepackage{CJKutf8}
+\usepackage{geometry}
+\usepackage{setspace}
+\usepackage{enumitem}
+\usepackage{amsmath,amssymb}
+\usepackage{graphicx}
+\usepackage{float}
+
+% 页面设置
+\geometry{a4paper, margin=2.5cm}
+\onehalfspacing
+
+% 列表间距设置
+\setlist[enumerate]{itemsep=2pt, parsep=2pt}
+\setlist[itemize]{itemsep=2pt, parsep=2pt}
+
+% 图片宽度设置
+\newlength{\imgwidth}
+\setlength{\imgwidth}{0.7\textwidth}  % 默认宽度（普通章节）
+
+\newlength{\smallimgwidth}
+\setlength{\smallimgwidth}{0.3\textwidth}  % 小图宽度（补充章节）
+
+{{TITLE_BLOCK}}
+
+\begin{document}
+\begin{CJK*}{UTF8}{gbsn}
+{{CONTENT}}
+\end{CJK*}
+\end{document}
