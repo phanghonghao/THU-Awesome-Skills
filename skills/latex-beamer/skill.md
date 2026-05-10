@@ -89,6 +89,102 @@ ls docs/presentation/templates/latex/xxx/main_ctex.tex
 2. 重命名为英文（中文转拼音）
 3. 更新 LaTeX 中的引用路径
 
+### 2.5 处理 GIF / 视频动画
+
+当 .md 中引用了 `.gif`、`.mp4`、`.avi` 等动态媒体文件时，自动提取帧并嵌入为 PDF 动画。
+
+#### 检测规则
+
+扫描 .md 中的媒体引用（与图片相同语法）：
+```markdown
+![描述](path/to/demo.gif)
+![描述](path/to/clip.mp4)
+```
+
+也扫描 `sources/` 目录中的 `.gif` 文件。
+
+#### 帧提取流程
+
+**GIF 提取**（使用 Pillow）：
+```python
+from PIL import Image
+import os
+
+def extract_gif_frames(gif_path, output_dir, max_width=200):
+    """提取 GIF 帧到 output_dir/frame_0.png, frame_1.png, ..."""
+    os.makedirs(output_dir, exist_ok=True)
+    img = Image.open(gif_path)
+    i = 0
+    while True:
+        frame = img.convert('RGB')
+        w, h = frame.size
+        new_w = min(max_width, w)
+        new_h = int(h * new_w / w)
+        frame = frame.resize((new_w, new_h), Image.LANCZOS)
+        # 关键：文件名不使用前导零！animategraphics 需要 frame_0, frame_1, ...
+        frame.save(os.path.join(output_dir, f'frame_{i}.png'))
+        i += 1
+        try:
+            img.seek(i)
+        except EOFError:
+            break
+    return i  # 返回总帧数
+```
+
+**视频提取**（使用 ffmpeg）：
+```bash
+# 从视频中每 N 帧提取一张 PNG（控制总帧数 <= 120）
+ffmpeg -i input.mp4 -vf "fps=10,scale=200:-1" sources/video_name/frame_%d.png
+```
+
+#### 帧数控制
+
+| 总帧数 | 处理策略 |
+|--------|---------|
+| ≤ 120 | 全部保留 |
+| 120-300 | 每 2 帧取 1 帧 |
+| > 300 | 每 N 帧取 1 帧，目标 ≤ 120 帧 |
+
+帧率映射：
+- GIF 原始 `duration` → `animategraphics` 帧率 = `1000 / duration_ms`
+- 视频默认 10 fps
+
+#### 目录结构
+
+```
+sources/
+├── image1.png              # 静态图片
+├── demo.gif                # 原始 GIF（保留）
+├── demo/                   # 帧目录（与 GIF 同名）
+│   ├── frame_0.png
+│   ├── frame_1.png
+│   └── ...
+├── clip.mp4                # 原始视频
+└── clip/                   # 帧目录
+    ├── frame_0.png
+    └── ...
+```
+
+#### LaTeX 集成
+
+1. **在 preamble 添加**：
+```latex
+\usepackage{animate}
+```
+
+2. **在对应 frame 中使用 `\animategraphics`**：
+```latex
+% 语法: \animategraphics[选项]{帧率}{文件基础路径}{起始帧}{结束帧}
+\animategraphics[autoplay,loop,width=0.5\textwidth]{10}{sources/demo/frame_}{0}{66}
+```
+
+3. **注意事项**：
+   - 文件名必须是 `frame_0.png, frame_1.png, ...`（**无前导零**）
+   - `\animategraphics` 会自动搜索 `frame_0.png`, `frame_0.pdf` 等格式
+   - `autoplay` = 打开 PDF 自动播放；`loop` = 循环
+   - **仅 Adobe Acrobat Reader 支持播放**，其他阅读器显示静态首帧
+   - 每个 GIF/视频的帧数较多会显著增大 PDF 体积（控制帧数 ≤ 120）
+
 ### 2.5 生成 README.md
 
 说明两个版本的区别和使用方法。
@@ -104,10 +200,17 @@ ls docs/presentation/templates/latex/xxx/main_ctex.tex
 ```python
 # 检测变化的内容类型
 1. 新增图片: 新的 ![alt](path) 或 <img> 标签
-2. 新增章节: 新的 ## 标题
-3. 数据更新: 数字、名称等信息变化
-4. 结构调整: 章节顺序、层级变化
+2. 新增 GIF/视频: ![alt](path) 中 path 以 .gif/.mp4/.avi 结尾
+3. 新增章节: 新的 ## 标题
+4. 数据更新: 数字、名称等信息变化
+5. 结构调整: 章节顺序、层级变化
 ```
+
+**GIF/视频处理**（检测到新动态媒体时）：
+1. 检测文件扩展名：`.gif`, `.mp4`, `.avi`, `.mov`, `.webm`
+2. 执行帧提取流程（参见 Step 2.5）
+3. 在 .tex 中使用 `\animategraphics` 嵌入动画
+4. 确保 `\usepackage{animate}` 在 preamble 中（仅首次添加）
 
 ### 3.2 先更新 .md 文件
 
@@ -204,8 +307,8 @@ ls docs/presentation/templates/latex/xxx/main_ctex.tex
 
    | 优先级 | 内容类型 | 同步要求 | 示例 |
    |--------|----------|----------|------|
-   | **必须** | 人名信息 | .tex → .md | "<姓名>" |
-   | **必须** | 项目名称 | .tex → .md | "<项目名>" |
+   | **必须** | 人名信息 | .tex → .md | "洪誌慧" |
+   | **必须** | 项目名称 | .tex → .md | "清园书享" |
    | **必须** | 新增图片 | .tex → .md | 新增图片引用 |
    | **应该** | 核心数据 | .tex ↔ .md | "4000万" |
    | **应该** | 章节标题 | .tex ↔ .md | 章节名称 |
@@ -435,6 +538,21 @@ isbn_sample.png → ["isbn"] → 匹配: "软件闭环功能"
 \includegraphics[width=\imgwidth]{image.png}
 ```
 
+### GIF / 视频转换
+
+```markdown
+![描述](demo.gif)
+↓ (自动提取帧到 sources/demo/frame_0.png, frame_1.png, ...)
+↓ (LaTeX preamble 需 \usepackage{animate})
+\animategraphics[autoplay,loop,width=0.5\textwidth]{10}{sources/demo/frame_}{0}{N}
+```
+
+**关键注意事项**：
+- `\animategraphics` 文件名编号**无前导零**: `frame_0.png`, `frame_1.png`（不是 `frame_00.png`）
+- 帧率 = `1000 / gif_duration_ms`（GIF 默认 100ms/帧 → 10fps）
+- PDF 体积与帧数成正比，建议单个动画 ≤ 120 帧
+- **仅 Adobe Acrobat Reader 支持动画播放**，其他阅读器显示静态首帧
+
 ### 表格转换
 
 ```markdown
@@ -456,13 +574,19 @@ A & B \\
 ## 文件结构
 
 ```
-docs/presentation/templates/latex/project_name/
-├── main.tex           # CJKutf8版本 (pdflatex)
-├── main_ctex.tex      # ctex版本 (XeLaTeX)
-├── README.md          # 使用说明
-└── sources/           # 图片目录
+<project_folder>/
+├── <name>.md            # Markdown 主源文件
+├── main_ctex.tex        # ctex 版本 (XeLaTeX)
+├── main_ctex.pdf        # Beamer PDF (animate 动画, 需 Acrobat Reader)
+├── gen_pptx.py          # python-pptx 生成脚本 (LLM 根据 .tex 自动生成)
+├── main.pptx            # PPTX (GIF 原生动画, 全平台兼容, 精美排版)
+├── README.md            # 使用说明
+└── sources/             # 图片目录
     ├── image1.png
-    ├── image2.jpg
+    ├── demo.gif         # GIF 原文件 (PPTX 直接嵌入)
+    ├── demo/            # GIF 帧目录 (PDF animate 用)
+    │   ├── frame_0.png
+    │   └── ...
     └── ...
 
 docs/documentation/
@@ -509,7 +633,7 @@ docs/documentation/
 
 **更新前**：
 ```markdown
-# "<项目名>"项目分享答辩框架
+# "清园书享"项目分享答辩框架
 
 **总时长**: 约 7-8 分钟
 ...
@@ -529,7 +653,7 @@ SolidWorks 硬件结构图
 ISBN样例
 ![alt text](image-1.png)
 
-# "<项目名>"项目分享答辩框架
+# "清园书享"项目分享答辩框架
 
 **总时长**: 约 7-8 分钟
 ...
@@ -542,7 +666,7 @@ ISBN样例
 - 新增 SolidWorks 硬件结构设计图
 - 新增开发原型配套图
 - 新增 ISBN 识别功能测试截图
-- 同步更新团队信息（<姓名1>、<姓名2>、<姓名3>）
+- 同步更新团队信息（洪誌慧、李佳昊、潘洪浩）
 ```
 
 ---
@@ -582,6 +706,8 @@ rm -f *.aux *.log *.out *.toc *.nav *.snm *.vrb *.fls *.fdb_latexmk *.synctex.gz
 ├── main_ctex.tex        # ctex 版本 (XeLaTeX)
 ├── main.tex             # CJKutf8 版本 (pdflatex)
 ├── main_ctex.pdf        # 编译输出的 PDF
+├── gen_pptx.py          # python-pptx 生成脚本 (LLM 根据 .tex 自动生成)
+├── main.pptx            # 精美 PPTX (复刻 Beamer 排版)
 ├── README.md            # 使用说明
 └── sources/             # 图片目录
     ├── image1.png
@@ -592,13 +718,191 @@ rm -f *.aux *.log *.out *.toc *.nav *.snm *.vrb *.fls *.fdb_latexmk *.synctex.gz
 
 当用户提供文件夹路径时：
 
-1. **扫描目录** — 列出 .MD / .tex / .pdf 文件和 sources/ 图片
+1. **扫描目录** — 列出 .MD / .tex / .pdf / .pptx 文件和 sources/ 图片
 2. **判断状态**:
    - 有 .MD 但无 .tex → 走 Step 2 完整生成 + 编译
    - 有 .tex 但无 .pdf → 走 Step 4 编译
    - .MD 比 .tex 新 → 走 Step 3 增量同步 + 编译
    - 三者都有且 .tex 最新 → 提示"已是最新"
-3. **执行对应步骤** → 生成/同步 + 编译
+3. **执行对应步骤** → 生成/同步 + 编译 + 生成 PPTX
+
+---
+
+## Step 5: python-pptx 生成精美 PPTX（复刻 Beamer 排版）
+
+**在 Step 4 (PDF 编译) 完成后，LLM 读取 .tex 结构，生成 python-pptx 脚本复刻同一布局。**
+
+### 5.1 为什么需要 PPTX
+
+| 特性 | PDF (Beamer) | PPTX (python-pptx) |
+|------|-------------|-------------------|
+| GIF 动画 | 仅 Acrobat Reader | 所有环境原生播放 |
+| 主题样式 | 精美自定义 | LLM 复刻 Beamer 排版 |
+| 数学公式 | 完美支持 | 文本近似 |
+| 表格 | 完美支持 | 完美支持 |
+| 编辑性 | 不可编辑 | 可自由编辑 |
+
+### 5.2 核心原理
+
+**没有 LaTeX→PPTX 自动转换库。** PPTX 的精美排版靠以下流程实现：
+
+```
+.tex 文件 → LLM 读取并理解结构 → 生成 gen_pptx.py → python-pptx 执行 → .pptx
+```
+
+1. LLM 读取 `main_ctex.tex` 的完整内容
+2. 解析每页 `\begin{frame}` 的结构：标题、分栏 `\begin{columns}`、block、图片、表格
+3. 生成 `gen_pptx.py` 脚本，用 python-pptx 精确复刻每个元素的位置、颜色、内容
+4. 执行脚本生成 `main.pptx`
+
+### 5.3 LLM 解析 .tex 的规则
+
+LLM 读取 .tex 时，提取以下结构信息：
+
+#### 解析目标
+
+```python
+# 每个 frame 提取:
+frame = {
+    "title": r"\begin{frame}{标题}",          # 页面标题
+    "plain": True/False,                       # 是否 plain 页（无标题栏）
+    "columns": [                               # 分栏布局
+        {
+            "width": "0.50",                   # 栏宽比例
+            "blocks": [                        # Beamer block
+                {"title": "...", "items": [...]}
+            ],
+            "images": [                        # 图片
+                {"path": "sources/xxx.png", "width": 0.95}
+            ],
+            "tables": [...],                   # 表格数据
+            "animate": [                       # animategraphics 动画
+                {"base": "sources/demo/frame_", "start": 0, "end": 66, "fps": 10}
+            ],
+            "text": [...]                      # 自由文本
+        }
+    ]
+}
+```
+
+#### 排版映射规则
+
+| Beamer 元素 | python-pptx 对应 |
+|-------------|-----------------|
+| `\begin{frame}` | `add_blank_slide()` |
+| 标题栏 `\frametitle{}` | 深蓝矩形 + 白色文字 + 绿色分隔线 |
+| `\begin{columns}` | 左右分区放置元素 |
+| `\begin{block}{标题}` | 绿色圆角标题条 + 灰色圆角正文 |
+| `\begin{alertblock}` | 橙色圆角标题条 + 浅橙正文 |
+| `\includegraphics` | `slide.shapes.add_picture()` |
+| `\animategraphics` | `add_picture(.gif)` (PPTX 原生动画) |
+| `\begin{tabular}` | 手动绘制表格行（文本框对齐） |
+| `\begin{itemize}` | 列表项，每项一行 |
+| `\begin{tikzpicture}` | 用圆角矩形 + 文字 + 箭头复刻 |
+| `frame[plain]` | 全屏背景色 + 居中内容 |
+
+#### 颜色方案（从 .tex 提取）
+
+```python
+# 从 .tex 的 \definecolor 提取，或使用默认值
+DEFAULT_COLORS = {
+    "dkblue":  RGBColor(0, 60, 113),     # 标题栏、框架
+    "nvgreen": RGBColor(118, 185, 0),     # block 标题、分隔线
+    "lgray":   RGBColor(240, 240, 240),   # block 正文背景
+    "white":   RGBColor(255, 255, 255),
+    "red":     RGBColor(200, 50, 50),     # 警告、失败标记
+    "gray":    RGBColor(120, 120, 120),   # 说明文字
+}
+```
+
+### 5.4 gen_pptx.py 脚本结构
+
+LLM 生成的脚本必须包含以下标准结构：
+
+```python
+from pptx import Presentation
+from pptx.util import Inches, Pt
+from pptx.dml.color import RGBColor
+from pptx.enum.text import PP_ALIGN
+from pptx.enum.shapes import MSO_SHAPE
+import os
+
+# ── 路径 ──
+BASE = os.path.dirname(os.path.abspath(__file__))
+SRC = os.path.join(BASE, "sources")
+
+# ── 颜色（从 .tex 提取） ──
+DKBLUE = RGBColor(...)
+NVGREEN = RGBColor(...)
+# ...
+
+# ── 工具函数（固定，不需要 LLM 修改） ──
+def add_blank_slide(prs): ...
+def add_rect(slide, left, top, w, h, color): ...
+def add_rounded_rect(slide, left, top, w, h, color): ...
+def add_textbox(slide, left, top, w, h, text, ...): ...
+def add_title_bar(slide, title): ...
+def add_block(slide, left, top, w, h, title, items, ...): ...
+def add_image_safe(slide, path, left, top, ...): ...
+
+# ── 16:9 尺寸 ──
+prs = Presentation()
+prs.slide_width = Inches(13.333)
+prs.slide_height = Inches(7.5)
+
+# ── 页面 1~N（LLM 根据 .tex 每页内容生成） ──
+# Slide 1: ...
+# Slide 2: ...
+# ...
+
+# ── 保存 ──
+prs.save(os.path.join(BASE, "main.pptx"))
+```
+
+### 5.5 执行命令
+
+```bash
+/c/Users/20174/AppData/Local/Programs/Python/Python314/python.exe gen_pptx.py
+```
+
+**注意**：
+- 如果 `main.pptx` 被 PowerPoint 打开，会 PermissionError，此时输出为 `main_v2.pptx`
+- GIF 文件直接用 `add_picture()` 嵌入，PowerPoint 会自动播放动画
+- 每次 .tex 内容变化后，需重新生成 `gen_pptx.py` 并执行
+
+### 5.6 何时重新生成 PPTX
+
+| 触发条件 | 动作 |
+|---------|------|
+| .tex 首次生成 | 生成 gen_pptx.py + 执行 |
+| .tex 内容变化（增删页、改内容） | 重新生成 gen_pptx.py + 执行 |
+| .tex 仅样式变化 | 通常不需要改 gen_pptx.py |
+| sources/ 中图片变化 | 仅重新执行 gen_pptx.py |
+
+### 5.7 最终文件结构
+
+```
+<project_folder>/
+├── <name>.md            # Markdown 主源文件
+├── main_ctex.tex        # ctex 版本 (XeLaTeX)
+├── main_ctex.pdf        # Beamer PDF（animate 动画，需 Acrobat Reader）
+├── gen_pptx.py          # python-pptx 生成脚本（LLM 根据 .tex 自动生成）
+├── main.pptx            # PPTX（GIF 原生动画，全平台兼容，精美排版）
+├── README.md            # 使用说明
+└── sources/             # 图片目录
+    ├── image1.png
+    ├── demo.gif         # GIF 原文件（PPTX 直接嵌入）
+    ├── demo/            # GIF 帧目录（PDF animate 用）
+    │   ├── frame_0.png
+    │   └── ...
+    └── ...
+```
+
+### 5.8 输出选择建议
+
+- **现场投屏演示** → 用 `.pptx`（GIF 动画全平台兼容，可编辑）
+- **学术答辩 / 精美排版** → 用 `.pdf`（Beamer 原生，LaTeX 公式完美）
+- **两者都生成** → 保留 `.md` 作为唯一源文件，同时输出 PDF + PPTX
 
 ---
 
@@ -618,4 +922,7 @@ rm -f *.aux *.log *.out *.toc *.nav *.snm *.vrb *.fls *.fdb_latexmk *.synctex.gz
 - **MiKTeX** — `C:\MiKTeX\miktex\bin\x64\` (xelatex + pdflatex)
 - **xelatex** — 用于 ctex 版本（推荐，支持生僻字）
 - **pdflatex** — 用于 CJKutf8 版本
+- **python-pptx** — `pip install python-pptx` (LLM 生成 gen_pptx.py 复刻 Beamer 排版)
+- **Pillow** — `pip install Pillow` (GIF 帧提取，PDF animate 用)
+- **Python 3.14** — `/c/Users/20174/AppData/Local/Programs/Python/Python314/python.exe`
 - **在线编译**: Overleaf（需将 Compiler 改为 XeLaTeX 使用 ctex 版本）

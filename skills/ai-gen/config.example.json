@@ -1,0 +1,4 @@
+{
+    "api_keys": ["sk-YOUR_KEY_HERE"],
+    "base_url": "https://llmapi.paratera.com/v1"
+}
