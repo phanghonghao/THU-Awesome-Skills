@@ -1,8 +1,8 @@
-# THU-Claude-Code-Skills
+# THU-Awesome-Skills
 
-> A collection of 10 general-purpose [Claude Code](https://docs.anthropic.com/en/docs/claude-code) custom skills for academic workflows, project management, and developer productivity.
+> A collection of 25 general-purpose [Claude Code](https://docs.anthropic.com/en/docs/claude-code) custom skills for academic workflows, project management, and developer productivity.
 >
-> 10 个通用型 [Claude Code](https://docs.anthropic.com/en/docs/claude-code) 自定义 Skill，覆盖学术工具、项目管理、开发效率等场景。
+> 25 个通用型 [Claude Code](https://docs.anthropic.com/en/docs/claude-code) 自定义 Skill，覆盖学术工具、项目管理、开发效率等场景。
 
 ---
 
@@ -20,6 +20,21 @@
 | 8 | [merge](skills/merge/) | Merge multiple videos into grid layout (2x2, 3x1, etc.) | `/merge` | `pip install av imageio imageio-ffmpeg Pillow numpy` |
 | 9 | [project-managing](skills/project-managing/) | Project meeting notes & progress tracking | `/project-managing` | python-docx (optional) |
 | 10 | [which-key](skills/which-key/) | Check which API key the current Claude Code session uses | `/which-key` | None |
+| 11 | [ai-gen](skills/ai-gen/) | AI image & video generation via paratera API (multi-model) | `/ai-gen` | paratera API key |
+| 12 | [html2tex](skills/html2tex/) | HTML to LaTeX converter | `/html2tex` | None |
+| 13 | [img-reader](skills/img-reader/) | Local image analysis with 3-tier fallback (PIL → GLM-4V → OCR) | `/img-reader` | PyMuPDF, Pillow (optional) |
+| 14 | [invoice-analyzer](skills/invoice-analyzer/) | Invoice recognition & financial status tracking | `/invoice-analyzer` | None |
+| 15 | [md2docx](skills/md2docx/) | Markdown to Word (.docx) converter | `/md2docx` | python-docx |
+| 16 | [md2tex](skills/md2tex/) | Markdown to LaTeX + PDF (XeLaTeX + ctex) | `/md2tex` | MiKTeX/TeX Live (xelatex) |
+| 17 | [pdf-reader](skills/pdf-reader/) | PDF text extraction via PyMuPDF (fitz) | `/pdf-reader` | PyMuPDF |
+| 18 | [plot-train-Z1](skills/plot-train-Z1/) | Z1 12DOF training learning curve plots & A4 PDF report | `/plot-train-Z1` | matplotlib, TensorBoard |
+| 19 | [poster](skills/poster/) | HTML/CSS A4 poster generation from Markdown | `/poster` | None |
+| 20 | [python-env](skills/python-env/) | Python version switching & virtual environment management | `/python-env` | None |
+| 21 | [start_claude](skills/start_claude/) | Manage & launch Claude Code instances with different API keys | `/start_claude` | None |
+| 22 | [sync-claude-skill](skills/sync-claude-skill/) | Sync Codex skills into Claude Code | `/sync-claude-skill` | PowerShell |
+| 23 | [sync-codex-skill](skills/sync-codex-skill/) | Sync Claude Code skills into Codex | `/sync-codex-skill` | PowerShell |
+| 24 | [word2html](skills/word2html/) | Word (.docx) to standalone HTML (tables, images, math) | `/word2html` | python-docx |
+| 25 | [word2md](skills/word2md/) | Word (.docx) to Markdown with OMML → LaTeX math conversion | `/word2md` | python-docx, lxml |
 
 ---
 
@@ -29,10 +44,10 @@
 
 ```bash
 # Clone the repo
-git clone https://github.com/phanghonghao/THU-Claude-Code-Skills.git
+git clone https://github.com/phanghonghao/THU-Awesome-Skills.git
 
 # Copy all skills to your Claude Code skills directory
-cp -r THU-Claude-Code-Skills/skills/* ~/.claude/skills/
+cp -r THU-Awesome-Skills/skills/* ~/.claude/skills/
 ```
 
 ### Install a Single Skill / 安装单个 Skill
@@ -40,18 +55,18 @@ cp -r THU-Claude-Code-Skills/skills/* ~/.claude/skills/
 ```bash
 # Example: install only the merge skill
 mkdir -p ~/.claude/skills/merge
-cp THU-Claude-Code-Skills/skills/merge/* ~/.claude/skills/merge/
+cp THU-Awesome-Skills/skills/merge/* ~/.claude/skills/merge/
 ```
 
 ### Windows
 
 ```powershell
 # Copy all skills
-Copy-Item -Recurse THU-Claude-Code-Skills\skills\* $env:USERPROFILE\.claude\skills\
+Copy-Item -Recurse THU-Awesome-Skills\skills\* $env:USERPROFILE\.claude\skills\
 
 # Or install a single skill
 New-Item -ItemType Directory -Force "$env:USERPROFILE\.claude\skills\merge"
-Copy-Item THU-Claude-Code-Skills\skills\merge\* "$env:USERPROFILE\.claude\skills\merge\"
+Copy-Item THU-Awesome-Skills\skills\merge\* "$env:USERPROFILE\.claude\skills\merge\"
 ```
 
 ---
@@ -145,6 +160,75 @@ Generate and manage project meeting notes with progress tracking tables. Support
 ### 10. which-key — API Key 查询
 
 Quickly check which API key profile the current Claude Code session is using. Read-only, no Bash required.
+
+### 11. ai-gen — AI 生图/生视频
+
+AI image & video generation via paratera API. Supports multiple model presets (豆包/GLM/MiniMax) with cross-series fallback.
+
+- Text-to-image and text-to-video generation
+- Multi-model combination for best coverage
+- Batch generation from Markdown files
+
+### 12. html2tex — HTML 转 LaTeX
+
+Convert HTML content to LaTeX format.
+
+### 13. img-reader — 本地图片读取分析
+
+Local image analysis with 3-tier automatic fallback:
+1. Read + PIL enhancement
+2. GLM-4V-Flash (free API)
+3. PaddleOCR (offline)
+
+Zero MCP credit required.
+
+### 14. invoice-analyzer — 发票识别分析
+
+Analyze invoices in financial management directory and extract key information. Update financial list with invoice status.
+
+### 15. md2docx — Markdown 转 Word
+
+Convert Markdown files to Word (.docx) format with proper formatting preservation.
+
+### 16. md2tex — Markdown 转 LaTeX + PDF
+
+Convert .md to .tex (XeLaTeX + ctex) and compile to .pdf. Supports Chinese, tables, images, math formulas, code blocks.
+
+### 17. pdf-reader — PDF 读取
+
+Read and extract text from PDF files using PyMuPDF (fitz). Preferred over native Read tool for PDF files.
+
+### 18. plot-train-Z1 — Z1 训练曲线绘图
+
+Generate and sync Z1 12DOF training learning curve plots from TensorBoard data, compile a single-page A4 PDF report with plots + data analysis.
+
+### 19. poster — A4 海报生成
+
+HTML/CSS A4 poster generation from Markdown event files. Tech-style design, supports PDF/PNG output.
+
+### 20. python-env — Python 环境管理
+
+Python version switching and virtual environment management. Quick create/activate .venv with specified Python version.
+
+### 21. start_claude — Claude Code 实例管理
+
+Manage and launch Claude Code instances with different API keys. Supports session recovery and in-place key switching with `--continue`.
+
+### 22. sync-claude-skill — 同步 Codex → Claude
+
+Synchronize Codex user skills into Claude Code skills directory. Supports full sync and single-skill sync.
+
+### 23. sync-codex-skill — 同步 Claude → Codex
+
+Synchronize Claude Code user skills into Codex skills directory. Preserves Codex built-in `.system` skills.
+
+### 24. word2html — Word 转 HTML
+
+Convert Word (.docx) files to standalone HTML with tables, images, and math formulas. Handles merged cells, embedded images, and OMML math via MathJax.
+
+### 25. word2md — Word 转 Markdown
+
+Convert Word (.docx) files with Office Math formulas to clean Markdown with LaTeX. Handles OMML to LaTeX conversion, Greek letters, subscripts, superscripts, fractions.
 
 ---
 
