@@ -7,12 +7,12 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-$sourceRoot = "C:\Users\20174\.codex\skills"
-$backupRoot = "C:\Users\20174\.claude\skill-backups"
+$sourceRoot = Join-Path $env:USERPROFILE ".codex\skills"
+$backupRoot = Join-Path $env:USERPROFILE ".claude\skill-backups"
 $excludeNames = @(".system")
 
 function Get-ClaudeSkillRoot {
-    $fallback = "C:\Users\20174\.claude\skills"
+    $fallback = Join-Path $env:USERPROFILE ".claude\skills"
 
     try {
         $claudePaths = & where.exe claude 2>$null
@@ -119,6 +119,43 @@ function Copy-SkillItem {
     return "file-copy"
 }
 
+function Confirm-SyncResult {
+    param(
+        [Parameter(Mandatory = $true)]$SyncedItems,
+        [Parameter(Mandatory = $true)][string]$SourceRootPath,
+        [Parameter(Mandatory = $true)][string]$TargetRootPath
+    )
+
+    $verifyErrors = @()
+
+    foreach ($item in $SyncedItems) {
+        $srcPath = Join-Path $SourceRootPath $item.name
+        $tgtPath = Join-Path $TargetRootPath $item.name
+
+        if (-not (Test-Path -LiteralPath $tgtPath)) {
+            $verifyErrors += "Verification failed: target missing for '$($item.name)'"
+            continue
+        }
+
+        $manifest = Join-Path $tgtPath "SKILL.md"
+        if (-not (Test-Path -LiteralPath $manifest)) {
+            $manifest = Join-Path $tgtPath "skill.md"
+            if (-not (Test-Path -LiteralPath $manifest)) {
+                $verifyErrors += "Verification failed: SKILL.md missing for '$($item.name)'"
+                continue
+            }
+        }
+
+        $srcFiles = (Get-ChildItem -LiteralPath $srcPath -File -Recurse -Force | Measure-Object).Count
+        $tgtFiles = (Get-ChildItem -LiteralPath $tgtPath -File -Recurse -Force | Measure-Object).Count
+        if ($srcFiles -ne $tgtFiles) {
+            $verifyErrors += "Verification failed: file count mismatch for '$($item.name)' (source=$srcFiles, target=$tgtFiles)"
+        }
+    }
+
+    return $verifyErrors
+}
+
 function Ensure-Roots {
     $script:targetRoot = Get-ClaudeSkillRoot
 
@@ -153,7 +190,9 @@ try {
 
     if ($Mode -eq "full") {
         Get-ChildItem -LiteralPath $targetRoot -Force | ForEach-Object {
-            Move-Item -LiteralPath $_.FullName -Destination $backupDir
+            $dest = Join-Path $backupDir $_.Name
+            Copy-Item -LiteralPath $_.FullName -Destination $dest -Recurse -Force -ErrorAction SilentlyContinue
+            Remove-Item -LiteralPath $_.FullName -Recurse -Force -ErrorAction SilentlyContinue
         }
 
         Get-ChildItem -LiteralPath $sourceRoot -Force | ForEach-Object {
@@ -191,7 +230,9 @@ try {
 
         $targetPath = Join-Path $targetRoot $SkillName
         if (Test-Path -LiteralPath $targetPath) {
-            Move-Item -LiteralPath $targetPath -Destination $backupDir
+            $dest = Join-Path $backupDir $SkillName
+            Copy-Item -LiteralPath $targetPath -Destination $dest -Recurse -Force -ErrorAction SilentlyContinue
+            Remove-Item -LiteralPath $targetPath -Recurse -Force -ErrorAction SilentlyContinue
         }
 
         $copyMode = Copy-SkillItem -SourcePath $sourcePath -TargetPath $targetPath
@@ -208,6 +249,24 @@ try {
 }
 catch {
     $result.errors += $_.Exception.Message
+}
+
+if ($result.errors.Count -eq 0 -and $result.synced.Count -gt 0) {
+    $verifyErrors = Confirm-SyncResult -SyncedItems $result.synced -SourceRootPath $sourceRoot -TargetRootPath $targetRoot
+    if ($verifyErrors.Count -gt 0) {
+        $result.errors += $verifyErrors
+        $result.errors += "Backup preserved at: $($result.backup_dir) — do not delete manually until verified"
+    }
+}
+
+if ($result.errors.Count -eq 0 -and $result.backup_dir) {
+    try {
+        Remove-Item -LiteralPath $result.backup_dir -Recurse -Force
+        $result.backup_dir = $null
+    }
+    catch {
+        $result.errors += "Sync completed but failed to remove backup dir '$($result.backup_dir)': $($_.Exception.Message)"
+    }
 }
 
 $result | ConvertTo-Json -Depth 6

@@ -31,8 +31,8 @@
 | 19 | [poster](skills/poster/) | HTML/CSS A4 poster generation from Markdown | `/poster` | None |
 | 20 | [python-env](skills/python-env/) | Python version switching & virtual environment management | `/python-env` | None |
 | 21 | [start_claude](skills/start_claude/) | Manage & launch Claude Code instances with different API keys | `/start_claude` | None |
-| 22 | [sync-claude-skill](skills/sync-claude-skill/) | Sync Codex skills into Claude Code | `/sync-claude-skill` | PowerShell |
-| 23 | [sync-codex-skill](skills/sync-codex-skill/) | Sync Claude Code skills into Codex | `/sync-codex-skill` | PowerShell |
+| 22 | [codex2claude](skills/codex2claude/) | Sync Codex skills into Claude Code | `/codex2claude` | PowerShell |
+| 23 | [claude2codex](skills/claude2codex/) | Sync Claude Code skills into Codex | `/claude2codex` | PowerShell |
 | 24 | [word2html](skills/word2html/) | Word (.docx) to standalone HTML (tables, images, math) | `/word2html` | python-docx |
 | 25 | [word2md](skills/word2md/) | Word (.docx) to Markdown with OMML → LaTeX math conversion | `/word2md` | python-docx, lxml |
 
@@ -68,6 +68,29 @@ Copy-Item -Recurse THU-Awesome-Skills\skills\* $env:USERPROFILE\.claude\skills\
 New-Item -ItemType Directory -Force "$env:USERPROFILE\.claude\skills\merge"
 Copy-Item THU-Awesome-Skills\skills\merge\* "$env:USERPROFILE\.claude\skills\merge\"
 ```
+
+---
+
+## For Codex Users / Codex 用户指南
+
+These skills are primarily designed for **Claude Code**, but they work seamlessly in **Codex** as well. To use them in Codex:
+
+**If you are a Codex user**, simply install the skills into your Claude Code skills directory first, then use the built-in sync tools to copy them into Codex:
+
+1. Install skills as described above (into `~/.claude/skills/` or `%USERPROFILE%\.claude\skills\`)
+2. In Claude Code, run `/claude2codex` to sync all skills from Claude to Codex
+3. Or sync a single skill: `/claude2codex <skill-name>`
+
+This will copy all user skills from `%USERPROFILE%\.claude\skills` into `%USERPROFILE%\.codex\skills`, while preserving Codex's built-in `.system` skills.
+
+**Reverse sync** (Codex → Claude): Use `/codex2claude` to sync skills from Codex back into Claude Code.
+
+Both sync tools include:
+- Automatic Claude environment discovery via `where claude`
+- Junction/link resolution (copies real contents)
+- SKILL.md case normalization (`skill.md` → `SKILL.md`)
+- Post-sync verification before backup cleanup
+- Full sync and single-skill sync modes
 
 ---
 
@@ -214,13 +237,13 @@ Python version switching and virtual environment management. Quick create/activa
 
 Manage and launch Claude Code instances with different API keys. Supports session recovery and in-place key switching with `--continue`.
 
-### 22. sync-claude-skill — 同步 Codex → Claude
+### 22. codex2claude — 同步 Codex → Claude
 
-Synchronize Codex user skills into Claude Code skills directory. Supports full sync and single-skill sync.
+Synchronize Codex user skills into Claude Code skills directory. Supports full sync and single-skill sync. Auto-discovers Claude environment via `where claude`. Includes post-sync verification (target existence, SKILL.md presence, file count parity) with automatic backup cleanup.
 
-### 23. sync-codex-skill — 同步 Claude → Codex
+### 23. claude2codex — 同步 Claude → Codex
 
-Synchronize Claude Code user skills into Codex skills directory. Preserves Codex built-in `.system` skills.
+Synchronize Claude Code user skills into Codex skills directory. Preserves Codex built-in `.system` skills. Supports full sync and single-skill sync. Includes post-sync verification with automatic backup cleanup.
 
 ### 24. word2html — Word 转 HTML
 

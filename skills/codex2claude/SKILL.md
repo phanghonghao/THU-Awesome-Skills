@@ -1,18 +1,18 @@
 ---
-name: sync-claude-skill
-description: Synchronize Codex user skills from C:\Users\20174\.codex\skills into the Claude Code skills folder discovered from the local Claude environment. Use when the user wants to sync, update, replace, or copy one or all Codex custom skills back into Claude. Supports full sync and single-skill sync. Excludes Codex built-in .system and accepts both skill.md and SKILL.md.
+name: codex2claude
+description: Synchronize Codex user skills into Claude Code. Auto-discovers the Claude environment and syncs from %USERPROFILE%\.codex\skills into the Claude skills folder. Supports full sync and single-skill sync. Excludes Codex built-in .system and accepts both skill.md and SKILL.md.
 ---
 
-# Sync Claude Skill
+# Codex to Claude (codex2claude)
 
 Synchronize user-created Codex skills into Claude Code.
 
 ## Scope
 
-- Source: `C:\Users\20174\.codex\skills`
-- Exclude from source: `C:\Users\20174\.codex\skills\.system`
+- Source: `%USERPROFILE%\.codex\skills`
+- Exclude from source: `%USERPROFILE%\.codex\skills\.system`
 - Target: Claude user skills folder, auto-discovered from the local Claude environment
-- Default target fallback: `C:\Users\20174\.claude\skills`
+- Default target fallback: `%USERPROFILE%\.claude\skills`
 
 Default behavior is to sync **user/custom Codex skills only**. Do **not** copy Codex built-in `.system` into Claude.
 
@@ -33,13 +33,13 @@ Use this skill when the user asks to:
 
 For requests like:
 
-- "同步所有 Codex skill 到 Claude"
-- "更新 Claude 的 skills"
+- "sync all Codex skills to Claude"
+- "update Claude skills from Codex"
 
 Run:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File "C:\Users\20174\.claude\skills\sync-claude-skill\scripts\sync-skills.ps1" -Mode full
+powershell -ExecutionPolicy Bypass -File "<SKILL_ROOT>\scripts\sync-skills.ps1" -Mode full
 ```
 
 Behavior:
@@ -49,18 +49,19 @@ Behavior:
 - Copies all Codex user skills except `.system`
 - Resolves junction/source links by copying real contents
 - Normalizes `skill.md` to `SKILL.md` when needed
+- Verifies sync result before cleaning up backup
 
 ### Single Skill Sync
 
 For requests like:
 
-- "同步 github-trending 到 Claude"
-- "只更新 md2tex 这个 skill 到 Claude"
+- "sync github-trending to Claude"
+- "update md2tex skill to Claude"
 
 Run:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File "C:\Users\20174\.claude\skills\sync-claude-skill\scripts\sync-skills.ps1" -Mode single -SkillName github-trending
+powershell -ExecutionPolicy Bypass -File "<SKILL_ROOT>\scripts\sync-skills.ps1" -Mode single -SkillName github-trending
 ```
 
 Behavior:
@@ -68,6 +69,7 @@ Behavior:
 - Backs up the current Claude copy of that skill if it exists
 - Replaces only that one target skill
 - Normalizes `skill.md` to `SKILL.md` when needed
+- Verifies sync result before cleaning up backup
 
 ## Output Handling
 
@@ -82,9 +84,9 @@ The script prints a JSON summary. Report to the user:
 
 ## Notes
 
-- Do not copy `C:\Users\20174\.codex\skills\.system`
+- Do not copy `%USERPROFILE%\.codex\skills\.system`
 - First try to detect Claude via `where claude`, then use the matching user Claude data directory
-- Treat `C:\Users\20174\.codex\skills` as the source of truth for Codex user skills
+- Treat `%USERPROFILE%\.codex\skills` as the source of truth for Codex user skills
 - If a skill exists as a junction/link, copy the real target contents
 - `skill.md` and `SKILL.md` should both be accepted as source files
 - Prefer writing `SKILL.md` in Claude targets
