@@ -6,6 +6,31 @@
 
 ---
 
+## For Codex Users / Codex 用户指南
+
+![Claude ↔ Codex Sync](assets/sync-diagram.png)
+
+These skills are primarily designed for **Claude Code**, but they work seamlessly in **Codex** as well. To use them in Codex:
+
+**If you are a Codex user**, simply install the skills into your Claude Code skills directory first, then use the built-in sync tools to copy them into Codex:
+
+1. Install skills as described above (into `~/.claude/skills/` or `%USERPROFILE%\.claude\skills\`)
+2. In Claude Code, run `/claude2codex` to sync all skills from Claude to Codex
+3. Or sync a single skill: `/claude2codex <skill-name>`
+
+This will copy all user skills from `%USERPROFILE%\.claude\skills` into `%USERPROFILE%\.codex\skills`, while preserving Codex's built-in `.system` skills.
+
+**Reverse sync** (Codex → Claude): Use `/codex2claude` to sync skills from Codex back into Claude Code.
+
+Both sync tools include:
+- Automatic Claude environment discovery via `where claude`
+- Junction/link resolution (copies real contents)
+- SKILL.md case normalization (`skill.md` → `SKILL.md`)
+- Post-sync verification before backup cleanup
+- Full sync and single-skill sync modes
+
+---
+
 ## Skills List / Skill 列表
 
 | # | Skill | Description / 功能 | Command / 命令 | Dependencies / 依赖 |
@@ -68,29 +93,6 @@ Copy-Item -Recurse THU-Awesome-Skills\skills\* $env:USERPROFILE\.claude\skills\
 New-Item -ItemType Directory -Force "$env:USERPROFILE\.claude\skills\merge"
 Copy-Item THU-Awesome-Skills\skills\merge\* "$env:USERPROFILE\.claude\skills\merge\"
 ```
-
----
-
-## For Codex Users / Codex 用户指南
-
-These skills are primarily designed for **Claude Code**, but they work seamlessly in **Codex** as well. To use them in Codex:
-
-**If you are a Codex user**, simply install the skills into your Claude Code skills directory first, then use the built-in sync tools to copy them into Codex:
-
-1. Install skills as described above (into `~/.claude/skills/` or `%USERPROFILE%\.claude\skills\`)
-2. In Claude Code, run `/claude2codex` to sync all skills from Claude to Codex
-3. Or sync a single skill: `/claude2codex <skill-name>`
-
-This will copy all user skills from `%USERPROFILE%\.claude\skills` into `%USERPROFILE%\.codex\skills`, while preserving Codex's built-in `.system` skills.
-
-**Reverse sync** (Codex → Claude): Use `/codex2claude` to sync skills from Codex back into Claude Code.
-
-Both sync tools include:
-- Automatic Claude environment discovery via `where claude`
-- Junction/link resolution (copies real contents)
-- SKILL.md case normalization (`skill.md` → `SKILL.md`)
-- Post-sync verification before backup cleanup
-- Full sync and single-skill sync modes
 
 ---
 
