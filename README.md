@@ -8,7 +8,7 @@
 
 ## For Codex Users / Codex 用户指南
 
-![Claude ↔ Codex Sync](assets/sync-diagram.png)
+![Best CLI Agent? Codex or Claude Code](assets/sync-diagram.png)
 
 These skills are primarily designed for **Claude Code**, but they work seamlessly in **Codex** as well. To use them in Codex:
 
