@@ -7,6 +7,8 @@ description: 大学作业管理系统 - 读取作业文档转为MD，用 `/assig
 
 自动化大学作业处理：读取作业文档 → 转换为 Markdown → 自动完成解答 → 编译为 PDF。
 
+![Assignment Workflow](flowchart.svg)
+
 ## Overview
 
 这个 skill 帮助你：
