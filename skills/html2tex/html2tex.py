@@ -5,16 +5,19 @@ Parses HTML produced by word2html: tables with colspan/rowspan,
 images, formatted text, MathJax formulas.
 
 Usage:
-    python html2tex.py <input.html> [--output-dir DIR] [--no-compile]
+    python html2tex.py <input.html> [--output-dir DIR] [--no-compile] [--keep]
 
 Output:
-    <input>.tex  - LaTeX source (XeLaTeX + ctex)
     <input>.pdf  - Compiled PDF (via xelatex)
+
+Intermediate files (.html, .tex, images/) are deleted by default after
+successful compilation. Use --keep to preserve them.
 """
 
 import sys
 import os
 import re
+import shutil
 import subprocess
 import argparse
 from pathlib import Path
@@ -209,6 +212,7 @@ class Html2TexConverter:
         self.images = []      # (rel_path, full_path)
         self.has_table = False
         self.has_math = False
+        self.has_code = False
 
     # -- public API --
 
@@ -275,11 +279,39 @@ class Html2TexConverter:
             inner = self._collect_inline(node, in_table)
             return f'\\sout{{{inner}}}'
 
+        # Code blocks: <pre><code> → lstlisting
+        if tag == 'pre':
+            return self._convert_pre(node)
+
+        # Lists
+        if tag == 'ul':
+            return self._convert_list(node, 'itemize')
+        if tag == 'ol':
+            return self._convert_list(node, 'enumerate')
+        if tag == 'li':
+            return self._convert_li(node, in_table)
+
         # Fallback: recurse
         parts = [self._convert_node(c, in_table) for c in node.children]
         return ''.join(p for p in parts if p)
 
     # -- text & inline --
+
+    # Unicode symbols that break Windows GBK encoding
+    _UNICODE_FIXES = {
+        '\u26a0': '[WARNING]',   # ⚠
+        '\u2713': '[OK]',        # ✓
+        '\u2717': '[X]',         # ✗
+        '\u2714': '[OK]',        # ✔
+        '\u2718': '[X]',         # ✘
+        '\u2026': '...',         # …
+        '\u2014': '---',         # —
+        '\u2013': '--',          # –
+        '\u201c': '"',           # "
+        '\u201d': '"',           # "
+        '\u2018': "'",           # '
+        '\u2019': "'",           # '
+    }
 
     def _convert_text(self, node, in_table=False):
         text = node.text
@@ -287,6 +319,9 @@ class Html2TexConverter:
             return ''
         # &nbsp; -> ~
         text = text.replace('\u00a0', '~')
+        # Fix Unicode symbols that break Windows GBK
+        for ch, replacement in self._UNICODE_FIXES.items():
+            text = text.replace(ch, replacement)
         # Replace Greek / math Unicode with LaTeX
         text = _replace_unicode_math(text)
         # Pass through math delimiters: \(...\), $$...$$
@@ -503,10 +538,17 @@ class Html2TexConverter:
 
         tab_tex = '\n'.join(tab_lines)
 
-        # Always wrap in resizebox to prevent overflow
+        # Auto font size based on column count (instead of resizebox)
+        if actual_cols >= 7:
+            size_cmd = '\\scriptsize'
+        elif actual_cols >= 5:
+            size_cmd = '\\small'
+        else:
+            size_cmd = ''
+
         tab_tex = ('\\begin{center}\n'
-                   '\\resizebox{\\textwidth}{!}{%\n'
-                   + tab_tex + '}\n'
+                   + (size_cmd + '\n' if size_cmd else '')
+                   + tab_tex + '\n'
                    '\\end{center}\n')
 
         return tab_tex + '\n'
@@ -522,6 +564,78 @@ class Html2TexConverter:
                     if sub.tag == 'tr':
                         rows.append(sub)
         return rows
+
+    # -- code blocks --
+
+    # Map HTML class "language-xxx" to lstlisting language names
+    _LANG_MAP = {
+        'python': 'Python', 'js': 'JavaScript', 'javascript': 'JavaScript',
+        'c': 'C', 'cpp': 'C++', 'java': 'Java', 'bash': 'bash',
+        'shell': 'bash', 'sh': 'bash', 'matlab': 'Matlab',
+        'r': 'R', 'sql': 'SQL', 'html': 'HTML', 'css': 'CSS',
+        'json': 'json', 'yaml': 'yaml', 'xml': 'XML',
+    }
+
+    def _convert_pre(self, node):
+        """Convert <pre> (possibly wrapping <code>) to \\begin{lstlisting}."""
+        self.has_code = True
+
+        # Check if first child is <code>
+        code_node = None
+        for child in node.children:
+            if child.tag == 'code':
+                code_node = child
+                break
+
+        source_node = code_node if code_node else node
+
+        # Detect language from class attribute
+        lang = ''
+        cls = (code_node or node).get_attr('class', '') if (code_node or node) else ''
+        if cls:
+            for part in cls.split():
+                if part.startswith('language-'):
+                    lang_key = part[len('language-'):]
+                    lang = self._LANG_MAP.get(lang_key, lang_key)
+                    break
+
+        # Collect raw text content (preserve whitespace, don't LaTeX-escape)
+        code_text = self._collect_raw_text(source_node)
+
+        lang_opt = f'[{lang}]' if lang else ''
+        return (f'\\begin{{lstlisting}}{lang_opt}\n'
+                f'{code_text}\n'
+                f'\\end{{lstlisting}}\n\n')
+
+    def _collect_raw_text(self, node):
+        """Collect raw text from children without any escaping."""
+        parts = []
+        for child in node.children:
+            if child.tag == 'TEXT' and child.text:
+                parts.append(child.text)
+            elif child.tag not in ('img',):
+                parts.append(self._collect_raw_text(child))
+        return ''.join(parts)
+
+    # -- lists --
+
+    def _convert_list(self, node, env_name):
+        """Convert <ul> or <ol> to \\begin{itemize/enumerate}."""
+        items = []
+        for child in node.children:
+            if child.tag == 'li':
+                items.append(self._convert_li(child))
+        if not items:
+            return ''
+        items_str = '\n'.join(items)
+        return f'\\begin{{{env_name}}}\n{items_str}\n\\end{{{env_name}}}\n\n'
+
+    def _convert_li(self, node, in_table=False):
+        """Convert <li> to \\item ..."""
+        inner = self._collect_inline(node, in_table)
+        if not inner.strip():
+            return ''
+        return f'  \\item {inner.strip()}'
 
     # -- document assembly --
 
@@ -540,6 +654,11 @@ class Html2TexConverter:
             r'\usepackage[margin=2.5cm]{geometry}',
             r'\usepackage{hyperref}',
         ]
+
+        # Conditional: listings package (only when code blocks exist)
+        if self.has_code:
+            packages.append(r'\usepackage{listings}')
+            packages.append(r'\lstset{basicstyle=\ttfamily\small, breaklines=true, frame=single}')
 
         # Image search paths
         img_dirs = set()
@@ -572,10 +691,11 @@ class Html2TexConverter:
 # ============================================================
 
 def compile_tex(tex_path, runs=2):
-    """Compile .tex to .pdf using XeLaTeX."""
+    """Compile .tex to .pdf using XeLaTeX. Returns (success, overfull_count)."""
     tex_dir = os.path.dirname(os.path.abspath(tex_path))
     tex_name = os.path.basename(tex_path)
 
+    overfull_total = 0
     for run in range(runs):
         print(f"XeLaTeX 编译第 {run+1} 遍...")
         result = subprocess.run(
@@ -592,9 +712,18 @@ def compile_tex(tex_path, runs=2):
                 print(f"编译错误: {errors[0]}")
             else:
                 print(f"编译失败 (返回码 {result.returncode})")
-            return False
+            return False, 0
 
-    return True
+        # Count overfull warnings from this run
+        log_content = result.stdout
+        overfull_count = (log_content.count('Overfull \\hbox')
+                          + log_content.count('Overfull \\vbox'))
+        overfull_total += overfull_count
+
+    if overfull_total > 0:
+        print(f"Overfull 警告: {overfull_total} 处")
+
+    return True, overfull_total
 
 
 # ============================================================
@@ -607,12 +736,16 @@ def main():
     parser.add_argument('--output-dir', help='Output directory (default: same as input)')
     parser.add_argument('--no-compile', action='store_true',
                         help='Only generate .tex, skip PDF compilation')
+    parser.add_argument('--keep', action='store_true',
+                        help='Keep intermediate files (.html, .tex, images/)')
     args = parser.parse_args()
 
-    html_path = args.input
+    html_path = os.path.abspath(args.input)
     if not os.path.exists(html_path):
         print(f"ERROR: File not found: {html_path}")
         sys.exit(1)
+
+    html_dir = os.path.dirname(html_path)
 
     # Convert
     converter = Html2TexConverter(html_path, args.output_dir)
@@ -628,19 +761,37 @@ def main():
     print(f"LaTeX 已生成: {tex_path}")
 
     # Compile
+    pdf_success = False
     if not args.no_compile:
         pdf_path = os.path.join(output_dir, f'{converter.html_name}.pdf')
-        success = compile_tex(tex_path)
+        success, overfull_count = compile_tex(tex_path)
         if success and os.path.exists(pdf_path):
             print(f"PDF 已生成: {pdf_path}")
+            pdf_success = True
         else:
             print("PDF 编译失败，请检查 .tex 文件")
 
-    # Clean auxiliary files
+    # Clean LaTeX auxiliary files (always)
     for ext in ['.aux', '.log', '.out', '.toc']:
         aux = os.path.join(output_dir, f'{converter.html_name}{ext}')
         if os.path.exists(aux):
             os.remove(aux)
+
+    # Clean intermediate files (default: on; --keep to preserve)
+    if pdf_success and not args.keep:
+        # Remove .tex
+        if os.path.exists(tex_path):
+            os.remove(tex_path)
+            print(f"已清理: {tex_path}")
+        # Remove input .html
+        if os.path.exists(html_path):
+            os.remove(html_path)
+            print(f"已清理: {html_path}")
+        # Remove images/ directory (generated by word2html)
+        img_dir = os.path.join(html_dir, 'images')
+        if os.path.isdir(img_dir):
+            shutil.rmtree(img_dir)
+            print(f"已清理: {img_dir}")
 
 
 if __name__ == '__main__':

@@ -40,7 +40,7 @@ VIDEO_MAX_WAIT = 600
 PRESETS = {
     "doubao": {
         "label": "豆包 (Doubao)",
-        "image_model": "GLM-CogView3-Flash",
+        "image_model": "Doubao-Seedream-4.0",
         "video_model": "Doubao-Seedance-1.0-Pro",
         "video_engine": "doubao",   # p001 族
     },
@@ -144,15 +144,33 @@ def text_to_image(prompt, output_path, api_key, base_url, model="GLM-CogView3-Fl
 
 # ── 文生视频 — 豆包 Doubao (p001 族) ─────────────────────────────────
 
-def _submit_doubao_video(prompt, api_key, base_url, model="Doubao-Seedance-1.0-Pro", ratio="16:9", dur=None):
+def _submit_doubao_video(prompt, api_key, base_url, model="Doubao-Seedance-1.0-Pro",
+                         ratio="16:9", dur=None, reference_image=None):
     """Submit async video task to Doubao p001 endpoint, return task_id."""
     text_parts = f"{prompt} --ratio {ratio}"
     if dur is not None:
         text_parts += f" --dur {dur}"
 
+    content_parts = []
+    # Add reference image if provided (image-to-video)
+    if reference_image:
+        img_path = Path(reference_image)
+        if not img_path.exists():
+            raise FileNotFoundError(f"Reference image not found: {img_path}")
+        img_data = base64.b64encode(img_path.read_bytes()).decode("utf-8")
+        suffix = img_path.suffix.lower()
+        mime = {"jpg": "image/jpeg", "jpeg": "image/jpeg", "png": "image/png"}.get(suffix.lstrip("."), "image/jpeg")
+        content_parts.append({
+            "type": "image_url",
+            "image_url": {"url": f"data:{mime};base64,{img_data}"},
+        })
+        print(f"[video/doubao] Reference image: {img_path.name} ({img_path.stat().st_size // 1024} KB)")
+
+    content_parts.append({"type": "text", "text": text_parts})
+
     payload = json.dumps({
         "model": model,
-        "content": [{"type": "text", "text": text_parts}],
+        "content": content_parts,
     }).encode("utf-8")
 
     url = base_url.rstrip("/") + "/p001/contents/generations/tasks"
@@ -184,12 +202,18 @@ def _poll_doubao_video(task_id, api_key, base_url):
         resp = urllib.request.urlopen(req, timeout=30)
         result = json.loads(resp.read().decode("utf-8"))
 
-        tasks = result.get("data") or []
+        tasks = result.get("items") or result.get("data") or []
         if tasks:
             task = tasks[0]
             status = task.get("status", "")
             if status == "succeeded":
-                video_url = (task.get("result") or {}).get("s3_url", "")
+                # Try new format: content.video_url, then legacy: result.s3_url
+                video_url = ""
+                content = task.get("content") or {}
+                if isinstance(content, dict):
+                    video_url = content.get("video_url", "")
+                if not video_url:
+                    video_url = (task.get("result") or {}).get("s3_url", "")
                 if not video_url:
                     raise RuntimeError(f"Task succeeded but no video URL: {task}")
                 return video_url
@@ -290,7 +314,7 @@ def _download_file(url, output_path):
 # ── 统一视频入口 ──────────────────────────────────────────────────────
 
 def text_to_video(prompt, output_path, api_key, base_url, provider="doubao",
-                  model=None, ratio="16:9", dur=None):
+                  model=None, ratio="16:9", dur=None, reference_image=None):
     """Call text-to-video API — dispatches to correct engine based on provider."""
     preset = PRESETS[provider]
     engine = preset["video_engine"]
@@ -298,7 +322,8 @@ def text_to_video(prompt, output_path, api_key, base_url, provider="doubao",
 
     if engine == "doubao":
         task_id = _submit_doubao_video(prompt, api_key, base_url,
-                                       model=video_model, ratio=ratio, dur=dur)
+                                       model=video_model, ratio=ratio, dur=dur,
+                                       reference_image=reference_image)
         video_url = _poll_doubao_video(task_id, api_key, base_url)
     elif engine == "minimax":
         task_id = _submit_minimax_video(prompt, api_key, base_url, model=video_model)
@@ -324,7 +349,7 @@ def list_presets():
     for name, p in PRESETS.items():
         print(f"{name:<10} {p['label']:<18} {p['image_model']:<25} {p['video_model']:<30}")
     print()
-    print("Image model is always GLM-CogView3-Flash (the only working image model).")
+    print("Image model: Doubao-Seedream-4.0 (default) or GLM-CogView3-Flash (fallback).")
     print("Choose preset based on your preferred video engine.")
 
 
@@ -352,6 +377,8 @@ def main():
                         help="Video duration in seconds (video mode only)")
     parser.add_argument("--api-key", default=None,
                         help="API key (overrides config.json key pool)")
+    parser.add_argument("--reference", default=None,
+                        help="Reference image path for image-to-video (Doubao only)")
 
     args = parser.parse_args()
 
@@ -405,7 +432,8 @@ def main():
         else:
             text_to_video(args.prompt, output, key, base_url,
                           provider=args.provider, model=model,
-                          ratio=args.ratio, dur=args.dur)
+                          ratio=args.ratio, dur=args.dur,
+                          reference_image=args.reference)
     except Exception as e:
         print(f"[ERROR] {e}", file=sys.stderr)
         sys.exit(1)

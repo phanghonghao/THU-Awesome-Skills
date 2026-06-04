@@ -1,4 +1,4 @@
-"""
+﻿"""
 md2tex.py — Markdown to LaTeX + PDF converter (XeLaTeX + ctex)
 
 Usage:
@@ -33,9 +33,13 @@ class Md2TexConverter:
             self.md_text = f.read()
 
         self.images = []       # 收集所有图片引用
+        self.image_counter = 0
         self.has_table = False
         self.has_math = False
         self.has_code = False
+        self.has_color = False
+        self.has_wrapfig = False
+
 
     def convert(self):
         """主转换流程"""
@@ -85,6 +89,12 @@ class Md2TexConverter:
                 title = title.replace('\\textbf{', '').replace('}', '')
                 body_parts.append(self._convert_heading(level, title))
                 i += 1
+                continue
+
+            # 列表（支持缩进子项）
+            if re.match(r'^\s*[-*]\s+', line):
+                list_block, i = self._parse_list(lines, i)
+                body_parts.append(list_block)
                 continue
 
             # 水平线
@@ -158,24 +168,31 @@ class Md2TexConverter:
 
         self.has_table = True
         num_cols = max(len(row) for row in table_lines)
-        col_spec = '|' + '|'.join(['c'] * num_cols) + '|'
+        # 固定比例列宽，避免长文本导致 Overfull
+        if num_cols == 4:
+            col_spec = r'|p{0.10\textwidth}|p{0.10\textwidth}|p{0.30\textwidth}|p{0.40\textwidth}|'
+        elif num_cols == 3:
+            col_spec = r'|p{0.16\textwidth}|p{0.24\textwidth}|p{0.52\textwidth}|'
+        else:
+            each = 0.88 / max(num_cols, 1)
+            col_spec = '|' + '|'.join([f'p{{{each:.3f}\\textwidth}}' for _ in range(num_cols)]) + '|'
 
-        tex_lines = [f'\\begin{{tabular}}{{{col_spec}}}']
+        tex_lines = [r'\setlength{\tabcolsep}{4pt}', r'\renewcommand{\arraystretch}{1.15}', f'\\begin{{tabular}}{{{col_spec}}}']
         tex_lines.append('\\hline')
 
         for ri, row in enumerate(table_lines):
             # 补齐列数
             while len(row) < num_cols:
                 row.append('')
-            # 转义每个单元格
-            escaped = [self._escape_latex(c) for c in row]
+            # 单元格也按行内规则处理（支持 $...$、【红】...【/红】）
+            escaped = [self._convert_inline(c) for c in row]
             tex_lines.append(' & '.join(escaped) + ' \\\\')
             tex_lines.append('\\hline')
 
         tex_lines.append('\\end{tabular}')
 
         # 包裹在 center 环境中
-        result = '\\begin{center}\n' + '\n'.join(tex_lines) + '\n\\end{center}\n'
+        result = '\\begin{center}\n\\small\n' + '\n'.join(tex_lines) + '\n\\normalsize\n\\end{center}\n'
         return result, i
 
     def _parse_paragraph(self, lines, start):
@@ -185,7 +202,8 @@ class Md2TexConverter:
             line = lines[i]
             if line.strip() == '' or line.strip().startswith('|') or line.strip().startswith('#') or \
                line.strip().startswith('```') or line.strip().startswith('$$') or \
-               line.strip().startswith('![') or line.strip().startswith('---'):
+               line.strip().startswith('![') or line.strip().startswith('---') or \
+               re.match(r'^\s*[-*]\s+', line):
                 break
             para_lines.append(line)
             i += 1
@@ -197,6 +215,45 @@ class Md2TexConverter:
         # 处理行内格式
         text = self._convert_inline(text)
         return f'{text}\n\n', i
+
+    def _parse_list(self, lines, start):
+        out = []
+        out.append('\\begin{itemize}')
+        i = start
+        in_sub = False
+        seen_top_item = False
+
+        while i < len(lines):
+            line = lines[i]
+            if line.strip() == '':
+                i += 1
+                continue
+            m = re.match(r'^(\s*)[-*]\s+(.+)$', line)
+            if not m:
+                break
+            indent = len(m.group(1).replace('\t', '    '))
+            item_text = self._convert_inline(m.group(2).strip())
+
+            # 如果列表块开头就是缩进子项（常见于图片/段落打断后），降级为顶层项
+            if indent >= 2 and not seen_top_item:
+                indent = 0
+
+            if indent >= 2 and not in_sub:
+                out.append('\\begin{itemize}')
+                in_sub = True
+            if indent < 2 and in_sub:
+                out.append('\\end{itemize}')
+                in_sub = False
+
+            out.append(f'\\item {item_text}')
+            if indent < 2:
+                seen_top_item = True
+            i += 1
+
+        if in_sub:
+            out.append('\\end{itemize}')
+        out.append('\\end{itemize}')
+        return '\n'.join(out) + '\n', i
 
     # --- 转换器 ---
 
@@ -215,29 +272,52 @@ class Md2TexConverter:
             return f'\\paragraph{{{title}}}\n'
 
     def _convert_image(self, alt, path):
-        # 处理相对路径
-        full_path = os.path.join(self.md_dir, path)
-        if not os.path.isabs(path):
-            # 使用相对于 output_dir 的路径
-            try:
-                rel_path = os.path.relpath(full_path, self.output_dir)
-            except ValueError:
-                rel_path = path
-        else:
-            rel_path = path
-
-        # 统一使用正斜杠 (LaTeX 要求)
-        rel_path = rel_path.replace('\\', '/')
+        # 处理相对路径并复制到 ASCII 目录，避免 LaTeX 对中文路径报错
+        full_path = path if os.path.isabs(path) else os.path.join(self.md_dir, path)
+        assets_dir = os.path.join(self.output_dir, 'md2tex_assets')
+        os.makedirs(assets_dir, exist_ok=True)
+        ext = os.path.splitext(full_path)[1].lower() or '.png'
+        self.image_counter += 1
+        new_name = f'img_{self.image_counter:03d}{ext}'
+        dst_path = os.path.join(assets_dir, new_name)
+        try:
+            shutil.copy2(full_path, dst_path)
+            rel_path = os.path.relpath(dst_path, self.output_dir).replace('\\', '/')
+        except Exception:
+            rel_path = (path if path else full_path).replace('\\', '/')
 
         self.images.append((alt, rel_path, full_path))
         alt_escaped = self._escape_latex(alt)
-        return (f'\\begin{{figure}}[htbp]\n'
+        self.has_wrapfig = True
+        # 优先使用右侧环绕图，尽量利用空白区域；由 LaTeX 自动避免遮挡正文
+        return (f'\\begin{{wrapfigure}}{{r}}{{0.42\\textwidth}}\n'
+                f'  \\vspace{{-0.6em}}\n'
                 f'  \\centering\n'
-                f'  \\includegraphics[width=0.85\\textwidth]{{{rel_path}}}\n'
+                f'  \\includegraphics[width=0.4\\textwidth]{{{rel_path}}}\n'
                 f'  \\caption{{{alt_escaped}}}\n'
-                f'\\end{{figure}}\n')
+                f'  \\vspace{{-0.8em}}\n'
+                f'\\end{{wrapfigure}}\n')
 
     def _convert_inline(self, text):
+        # 红色关键公式标记：默认按数学公式处理
+        def red_repl(m):
+            self.has_color = True
+            content = m.group(1).strip()
+            # 兼容两种写法：
+            # 1) 【红】a+b【/红】
+            # 2) 【红】$a+b$【/红】
+            if content.startswith('$') and content.endswith('$') and len(content) >= 2:
+                content = content[1:-1].strip()
+            return f'\\textcolor{{red}}{{${content}$}}'
+        text = re.sub(r'【红】(.*?)【/红】', red_repl, text)
+
+        # 保护代码段，避免被 * 强调误伤
+        code_spans = []
+        def hold_code(m):
+            code_spans.append(m.group(1))
+            return f'__CODE{len(code_spans)-1}__'
+        text = re.sub(r'`([^`]+)`', hold_code, text)
+
         # 行内数学 $...$
         def math_repl(m):
             self.has_math = True
@@ -247,12 +327,15 @@ class Md2TexConverter:
         # 加粗 **...**
         text = re.sub(r'\*\*(.+?)\*\*', r'\\textbf{\1}', text)
         # 斜体 *...*
-        text = re.sub(r'\*(.+?)\*', r'\\textit{\1}', text)
-        # 行内代码 `...`
-        text = re.sub(r'`([^`]+)`', r'\\texttt{\1}', text)
+        text = re.sub(r'(?<!\*)\*(?!\s)(.+?)(?<!\s)\*(?!\*)', r'\\textit{\1}', text)
 
         # 转义特殊字符（但保留已转换的命令）
         text = self._escape_latex_partial(text)
+
+        # 恢复代码段
+        for idx, code in enumerate(code_spans):
+            code_esc = self._escape_latex(code)
+            text = text.replace(f'__CODE{idx}__', f'\\texttt{{{code_esc}}}')
 
         return text
 
@@ -267,25 +350,10 @@ class Md2TexConverter:
         return text
 
     def _escape_latex_partial(self, text):
-        """部分转义：保留已生成的 LaTeX 命令"""
-        # 先标记已有的 LaTeX 命令
-        commands = []
-        def save_cmd(m):
-            commands.append(m.group(0))
-            return f'__CMD{len(commands)-1}__'
-        text = re.sub(r'\\(?:textbf|textit|texttt|textbackslash|textasciitilde|textasciicircum)\{[^}]*\}', save_cmd, text)
-        text = re.sub(r'\\\$', save_cmd, text)
-        text = re.sub(r'\$[^$]+\$', save_cmd, text)
-
-        # 转义剩余的
+        """部分转义：不破坏已生成的 LaTeX 结构"""
         for old, new in [('&', '\\&'), ('%', '\\%'), ('#', '\\#'),
                          ('~', '\\textasciitilde{}'), ('^', '\\textasciicircum{}')]:
             text = text.replace(old, new)
-
-        # 恢复命令
-        for idx, cmd in enumerate(commands):
-            text = text.replace(f'__CMD{idx}__', cmd)
-
         return text
 
     # --- 文档组装 ---
@@ -302,10 +370,14 @@ class Md2TexConverter:
         packages.append(r'\usepackage{amssymb}')
         packages.append(r'\usepackage[margin=2.5cm]{geometry}')
         packages.append(r'\usepackage{hyperref}')
+        if self.has_color:
+            packages.append(r'\usepackage{xcolor}')
 
         if self.has_code:
             packages.append(r'\usepackage{listings}')
             packages.append(r'\lstset{basicstyle=\ttfamily\small, breaklines=true, frame=single}')
+        if self.has_wrapfig:
+            packages.append(r'\usepackage{wrapfig}')
 
         if self.has_table:
             packages.append(r'\usepackage{array}')
@@ -415,3 +487,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+

@@ -1,8 +1,8 @@
 # THU-Awesome-Skills
 
-> A collection of 25 general-purpose [Claude Code](https://docs.anthropic.com/en/docs/claude-code) custom skills for academic workflows, project management, and developer productivity.
+> A collection of 36 general-purpose [Claude Code](https://docs.anthropic.com/en/docs/claude-code) custom skills for academic workflows, project management, and developer productivity.
 >
-> 25 个通用型 [Claude Code](https://docs.anthropic.com/en/docs/claude-code) 自定义 Skill，覆盖学术工具、项目管理、开发效率等场景。
+> 36 个通用型 [Claude Code](https://docs.anthropic.com/en/docs/claude-code) 自定义 Skill，覆盖学术工具、项目管理、开发效率等场景。
 
 ---
 
@@ -60,6 +60,17 @@ Both sync tools include:
 | 23 | [claude2codex](skills/claude2codex/) | Sync Claude Code skills into Codex | `/claude2codex` | PowerShell |
 | 24 | [word2html](skills/word2html/) | Word (.docx) to standalone HTML (tables, images, math) | `/word2html` | python-docx |
 | 25 | [word2md](skills/word2md/) | Word (.docx) to Markdown with OMML → LaTeX math conversion | `/word2md` | python-docx, lxml |
+| 26 | [any2md](skills/any2md/) | Universal document → Markdown converter (auto-routes DOCX/PPTX/XLSX/PDF) | `/any2md` | markitdown, PyMuPDF, python-docx |
+| 27 | [assignment-word](skills/assignment-word/) | Edit & fill Word (.docx) — replace text, insert images, fill tables | `/assignment-word` | python-docx |
+| 28 | [claude2anti](skills/claude2anti/) | Sync Claude Code skills into Antigravity (Gemini) | `/claude2anti` | None |
+| 29 | [embodied-ai-agent](skills/embodied-ai-agent/) | Bilibili & GitHub embodied AI research → Chinese Wiki drafts | `/embodied-ai-agent` | OpenAI API (optional) |
+| 30 | [html2pdf](skills/html2pdf/) | HTML → paginated PDF via Chrome/Edge headless | `/html2pdf` | Chrome or Edge |
+| 31 | [html-slides](skills/html-slides/) | HTML slide-style presentation builder | `/html-slides` | None |
+| 32 | [markitdown](skills/markitdown/) | Multi-format → Markdown via Microsoft markitdown (PDF/PPTX/XLSX/EPUB) | `/markitdown` | markitdown |
+| 33 | [paper-html-onepage](skills/paper-html-onepage/) | arXiv paper → single-page A4 HTML summary | `/paper-html-onepage` | PyMuPDF |
+| 34 | [pdf2word](skills/pdf2word/) | PDF → Word (.docx) preserving layout, tables, images | `/pdf2word` | PyMuPDF, python-docx |
+| 35 | [reflection2xhs](skills/reflection2xhs/) | Reflection Markdown → Xiaohongshu-style A4 poster | `/reflection2xhs` | OpenAI API (optional) |
+| 36 | [word2pdf](skills/word2pdf/) | Word (.doc/.docx) → PDF via Word COM or LibreOffice | `/word2pdf` | Microsoft Word or LibreOffice |
 
 ---
 
@@ -254,6 +265,50 @@ Convert Word (.docx) files to standalone HTML with tables, images, and math form
 ### 25. word2md — Word 转 Markdown
 
 Convert Word (.docx) files with Office Math formulas to clean Markdown with LaTeX. Handles OMML to LaTeX conversion, Greek letters, subscripts, superscripts, fractions.
+
+### 26. any2md — 通用文档转 Markdown
+
+Universal document-to-Markdown converter with automatic format routing. Auto-detects DOCX math and routes to word2md; uses markitdown for PPTX/XLSX/HTML/EPUB; supports PyMuPDF for high-fidelity PDF.
+
+### 27. assignment-word — Word 文档填写
+
+Edit and fill Word (.docx) documents programmatically — inspect structure, replace text, batch fill placeholders, insert images, and fill tables.
+
+### 28. claude2anti — 同步 Claude → Antigravity
+
+Synchronize Claude Code user skills into Antigravity (Gemini). Supports full sync and single-skill sync.
+
+### 29. embodied-ai-agent — 具身智能调研 Agent
+
+Research and organize Bilibili & GitHub embodied AI content. Generates Chinese Wiki drafts by topic, with optional Feishu push. Covers VLA, World Models, GR00T, ALOHA and more.
+
+### 30. html2pdf — HTML 转 PDF
+
+Convert HTML, especially slide-style presentations, into paginated PDF using Chrome or Edge headless printing.
+
+### 31. html-slides — HTML 幻灯片
+
+Build HTML-based slide presentations with rich formatting support.
+
+### 32. markitdown — 多格式转 Markdown
+
+Convert various document formats (PDF, DOCX, PPTX, XLSX, HTML, EPUB, images, IPYNB, ZIP) to Markdown using Microsoft's markitdown library.
+
+### 33. paper-html-onepage — 论文单页总结
+
+Automatically retrieve paper PDFs from arXiv by keyword, extract full text, and generate a single-page A4-style HTML summary.
+
+### 34. pdf2word — PDF 转 Word
+
+Convert PDF files to Word (.docx) while preserving layout, tables, images, and formatting.
+
+### 35. reflection2xhs — 读后感转小红书海报
+
+Convert reflection Markdown files into polished single-page Xiaohongshu-style A4 poster.
+
+### 36. word2pdf — Word 转 PDF
+
+Convert Word (.doc/.docx) to PDF. Auto-detects binary .doc vs .docx, then converts using Microsoft Word COM or LibreOffice headless.
 
 ---
 

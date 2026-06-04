@@ -139,10 +139,15 @@ def omml_to_latex(elem):
 def extract_images(input_path, img_dir):
     """Extract all images from docx zip -> img_dir. Return {internal_path: filename}."""
     img_map = {}
+    input_path = os.path.abspath(input_path)
+    img_dir = os.path.abspath(img_dir)
     os.makedirs(img_dir, exist_ok=True)
     with zipfile.ZipFile(input_path) as zf:
         for name in zf.namelist():
             if name.startswith('word/media/'):
+                # Skip directory entries (basename would be empty)
+                if name.endswith('/'):
+                    continue
                 data = zf.read(name)
                 basename = os.path.basename(name)
                 out_path = os.path.join(img_dir, basename)

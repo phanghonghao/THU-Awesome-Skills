@@ -96,9 +96,41 @@ Example:
 Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>
 ```
 
-### Step 6: Push to GitHub
+### Step 6: Check for Open PRs (gate before push)
 
-Run `git push origin main` (or `origin master` if that's the branch).
+**Before pushing**, check for open Pull Requests using `gh pr list`:
+
+```
+gh pr list --state open
+```
+
+**If there are open PRs:**
+
+1. Display each PR with title, author, and clickable URL
+2. Ask user: `检测到以下 PR 尚未处理，请选择操作：`
+   - For each PR, offer: `merge` / `close` / `skip (稍后处理)`
+3. If user chooses `merge`: run `gh pr merge <number> --merge`
+4. If user chooses `close`: run `gh pr close <number>`
+5. If user chooses `skip`: abort the push, tell user to handle PR first
+6. After all PRs resolved → continue to Step 7
+
+**If no open PRs:** → proceed directly to Step 7
+
+### Step 7: Push to GitHub
+
+**First check remotes** with `git remote -v`. Many projects have multiple remotes:
+- If `myfork` remote exists → push to `myfork` (NOT `origin`)
+- Otherwise → push to `origin`
+
+**Before push**, pull latest changes to avoid conflicts:
+```
+git pull <remote> main --rebase
+```
+
+Then push:
+```
+git push <remote> main
+```
 
 ## Important Notes
 
@@ -106,3 +138,6 @@ Run `git push origin main` (or `origin master` if that's the branch).
 - **Always list changes and wait for confirmation**
 - **After confirmation, execute without further prompts**: add → commit → push
 - Commit message format: `(User's description), (AI's summary)`
+- **Push to `myfork` if it exists**, never push to `origin` when `myfork` is available
+- **Always check for open PRs before pushing** — unresolved PRs may cause conflicts
+- **Pull with rebase before push** to stay in sync with remote

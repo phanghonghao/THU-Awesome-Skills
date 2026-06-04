@@ -11,16 +11,16 @@ Generate Z1 12DOF locomotion training plots from TensorBoard data on the RTX 600
 
 | Property | Value |
 |----------|-------|
-| SSH Host | `phh@192.168.120.155` (VPN required) |
+| SSH Host | `<user>@<server_ip>` (VPN required) |
 | Conda Env | `isaaclab` |
 | Project Root (server) | `~/magiclab_rl_lab` |
 | Log Root (server) | `~/magiclab_rl_lab/logs/rsl_rl/magiclab_z1_12dof_velocity` |
 | Plot Script (server) | `~/magiclab_rl_lab/scripts/plot_learning_curves.py` |
 | Output Dir (server) | `~/magiclab_rl_lab/plots` |
-| Local Plots Dir | `D:/Desktop_Files/GPU-Train/RTX6000/Magicbot_Z1/plots/phase/` |
-| Report Script (local) | `D:/Desktop_Files/GPU-Train/RTX6000/Magicbot_Z1/scripts/gen_report_pdf.py` |
-| best_models.json | `D:/Desktop_Files/GPU-Train/RTX6000/Magicbot_Z1/best_models.json` |
-| bestmodel_phase.json | `D:/Desktop_Files/GPU-Train/RTX6000/Magicbot_Z1/docs/tracking/bestmodel_phase.json` |
+| Local Plots Dir | `<your_data_path>` |
+| Report Script (local) | `<your_data_path>` |
+| best_models.json | `<your_data_path>` |
+| bestmodel_phase.json | `<your_data_path>` |
 
 ## VPN
 
@@ -35,11 +35,11 @@ Before generating any PDF report, **always update `best_models.json`** so the re
 
 ```bash
 # 1. Run train_monitor on RTX to regenerate best_models.json
-ssh phh@192.168.120.155 "source ~/miniconda3/etc/profile.d/conda.sh && conda activate isaaclab && cd ~/magiclab_rl_lab && python -u scripts/train_monitor.py --once --terrain gentle 2>/dev/null"
+ssh <user>@<server_ip> "source ~/miniconda3/etc/profile.d/conda.sh && conda activate isaaclab && cd ~/magiclab_rl_lab && python -u scripts/train_monitor.py --once --terrain gentle 2>/dev/null"
 
 # 2. Download updated best_models.json
-scp phh@192.168.120.155:~/magiclab_rl_lab/logs/rsl_rl/magiclab_z1_12dof_velocity/best_models.json \
-    "D:/Desktop_Files/GPU-Train/RTX6000/Magicbot_Z1/best_models.json"
+scp <user>@<server_ip>:~/magiclab_rl_lab/logs/rsl_rl/magiclab_z1_12dof_velocity/best_models.json \
+    "<your_data_path>"
 ```
 
 This ensures new pipeline runs (p1_coarse, p1_fine, p2_coarse, etc.) are tracked with proper overfitting detection data.
@@ -79,14 +79,14 @@ Generate all 4 plots on the server + download + compile PDF report.
 2. Check if `plot_learning_curves.py` exists at the expected path
 3. Run the script on the server:
    ```bash
-   ssh phh@192.168.120.155 "cd ~/magiclab_rl_lab && source ~/miniconda3/etc/profile.d/conda.sh && conda activate isaaclab && python scripts/plot_learning_curves.py --log_root logs/rsl_rl/magiclab_z1_12dof_velocity --output_dir plots"
+   ssh <user>@<server_ip> "cd ~/magiclab_rl_lab && source ~/miniconda3/etc/profile.d/conda.sh && conda activate isaaclab && python scripts/plot_learning_curves.py --log_root logs/rsl_rl/magiclab_z1_12dof_velocity --output_dir plots"
    ```
 4. Download PNG files to temp directory, then organize into per-run folder:
    ```bash
-   LOCAL_PLOTS="D:/Desktop_Files/GPU-Train/RTX6000/Magicbot_Z1/plots"
+   LOCAL_PLOTS="<your_data_path>"
 
    mkdir -p /tmp/z1_plots
-   scp phh@192.168.120.155:~/magiclab_rl_lab/plots/*.png /tmp/z1_plots/
+   scp <user>@<server_ip>:~/magiclab_rl_lab/plots/*.png /tmp/z1_plots/
 
    ALIAS=$(ls /tmp/z1_plots/*.png 2>/dev/null | head -1 | sed 's/.*_\([a-z0-9_]*\)\.png/\1/' | xargs basename -s .png | sed 's/.*_//')
 
@@ -107,14 +107,14 @@ Generate all 4 plots on the server + download + compile PDF report.
    ```
 6. **Update best_models.json** (before generating report):
    ```bash
-   ssh phh@192.168.120.155 "source ~/miniconda3/etc/profile.d/conda.sh && conda activate isaaclab && cd ~/magiclab_rl_lab && python -u scripts/train_monitor.py --once --terrain gentle 2>/dev/null"
+   ssh <user>@<server_ip> "source ~/miniconda3/etc/profile.d/conda.sh && conda activate isaaclab && cd ~/magiclab_rl_lab && python -u scripts/train_monitor.py --once --terrain gentle 2>/dev/null"
 
-   scp phh@192.168.120.155:~/magiclab_rl_lab/logs/rsl_rl/magiclab_z1_12dof_velocity/best_models.json \
-       "D:/Desktop_Files/GPU-Train/RTX6000/Magicbot_Z1/best_models.json"
+   scp <user>@<server_ip>:~/magiclab_rl_lab/logs/rsl_rl/magiclab_z1_12dof_velocity/best_models.json \
+       "<your_data_path>"
    ```
 7. **Generate PDF report** (local):
    ```bash
-   cd "D:/Desktop_Files/GPU-Train/RTX6000/Magicbot_Z1"
+   cd "<your_data_path>"
    python scripts/gen_report_pdf.py --alias $ALIAS
    ```
 8. Open the PDF for the user:
@@ -149,15 +149,15 @@ Specify a focus run for all 4 plots + PDF report.
 1. Resolve alias to full run dir name (check `RUN_ALIASES` in the plot script)
 2. Run with `--focus_run <dir_name>`:
    ```bash
-   ssh phh@192.168.120.155 "cd ~/magiclab_rl_lab && source ~/miniconda3/etc/profile.d/conda.sh && conda activate isaaclab && python scripts/plot_learning_curves.py --log_root logs/rsl_rl/magiclab_z1_12dof_velocity --output_dir plots --focus_run <FULL_DIR_NAME>"
+   ssh <user>@<server_ip> "cd ~/magiclab_rl_lab && source ~/miniconda3/etc/profile.d/conda.sh && conda activate isaaclab && python scripts/plot_learning_curves.py --log_root logs/rsl_rl/magiclab_z1_12dof_velocity --output_dir plots --focus_run <FULL_DIR_NAME>"
    ```
 3. Download and organize into per-run folder:
    ```bash
-   LOCAL_PLOTS="D:/Desktop_Files/GPU-Train/RTX6000/Magicbot_Z1/plots"
+   LOCAL_PLOTS="<your_data_path>"
    ALIAS="<the alias, e.g. phase_p1>"
 
    mkdir -p /tmp/z1_plots
-   scp phh@192.168.120.155:~/magiclab_rl_lab/plots/*.png /tmp/z1_plots/
+   scp <user>@<server_ip>:~/magiclab_rl_lab/plots/*.png /tmp/z1_plots/
 
    mkdir -p "$LOCAL_PLOTS/$ALIAS"
    rm -f "$LOCAL_PLOTS/$ALIAS/"*.png
@@ -169,14 +169,14 @@ Specify a focus run for all 4 plots + PDF report.
    ```
 4. **Update best_models.json** (before generating report):
    ```bash
-   ssh phh@192.168.120.155 "source ~/miniconda3/etc/profile.d/conda.sh && conda activate isaaclab && cd ~/magiclab_rl_lab && python -u scripts/train_monitor.py --once --terrain gentle 2>/dev/null"
+   ssh <user>@<server_ip> "source ~/miniconda3/etc/profile.d/conda.sh && conda activate isaaclab && cd ~/magiclab_rl_lab && python -u scripts/train_monitor.py --once --terrain gentle 2>/dev/null"
 
-   scp phh@192.168.120.155:~/magiclab_rl_lab/logs/rsl_rl/magiclab_z1_12dof_velocity/best_models.json \
-       "D:/Desktop_Files/GPU-Train/RTX6000/Magicbot_Z1/best_models.json"
+   scp <user>@<server_ip>:~/magiclab_rl_lab/logs/rsl_rl/magiclab_z1_12dof_velocity/best_models.json \
+       "<your_data_path>"
    ```
 5. **Generate PDF report** (local):
    ```bash
-   cd "D:/Desktop_Files/GPU-Train/RTX6000/Magicbot_Z1"
+   cd "<your_data_path>"
    python scripts/gen_report_pdf.py --alias $ALIAS
    ```
 6. Open the PDF:
@@ -195,7 +195,7 @@ This is the same as the default flow — the script always reads from TensorBoar
 Only update the local `plots/README.md` without regenerating plots.
 
 **Steps:**
-1. Read `D:/Desktop_Files/GPU-Train/RTX6000/Magicbot_Z1/best_models.json`
+1. Read `<your_data_path>`
 2. List existing PNG files in per-run subfolders under `plots/`
 3. Update the overview table, key findings, and recommendations sections
 4. Ensure image references use `plots/<alias>/` paths
@@ -210,10 +210,10 @@ Generate all 4 plots + PDF reports for every run with >5000 data points.
 3. For each run, download and organize into `plots/<alias>/` folder
 4. **Update best_models.json** (once, before all reports):
    ```bash
-   ssh phh@192.168.120.155 "source ~/miniconda3/etc/profile.d/conda.sh && conda activate isaaclab && cd ~/magiclab_rl_lab && python -u scripts/train_monitor.py --once --terrain gentle 2>/dev/null"
+   ssh <user>@<server_ip> "source ~/miniconda3/etc/profile.d/conda.sh && conda activate isaaclab && cd ~/magiclab_rl_lab && python -u scripts/train_monitor.py --once --terrain gentle 2>/dev/null"
 
-   scp phh@192.168.120.155:~/magiclab_rl_lab/logs/rsl_rl/magiclab_z1_12dof_velocity/best_models.json \
-       "D:/Desktop_Files/GPU-Train/RTX6000/Magicbot_Z1/best_models.json"
+   scp <user>@<server_ip>:~/magiclab_rl_lab/logs/rsl_rl/magiclab_z1_12dof_velocity/best_models.json \
+       "<your_data_path>"
    ```
 5. For each run, run `gen_report_pdf.py --alias <alias>` locally
 6. This may take several minutes — warn the user
@@ -223,22 +223,22 @@ Generate all 4 plots + PDF reports for every run with >5000 data points.
 Generate plots + PDF reports for all runs tracked in `bestmodel_phase.json`. This is the recommended way to batch-generate reports for 5-phase pipeline runs.
 
 **Steps:**
-1. Read `D:/Desktop_Files/GPU-Train/RTX6000/Magicbot_Z1/docs/tracking/bestmodel_phase.json` to get all run aliases
+1. Read `<your_data_path>` to get all run aliases
 2. **Update best_models.json** (once, before all reports):
    ```bash
-   ssh phh@192.168.120.155 "source ~/miniconda3/etc/profile.d/conda.sh && conda activate isaaclab && cd ~/magiclab_rl_lab && python -u scripts/train_monitor.py --once --terrain gentle 2>/dev/null"
+   ssh <user>@<server_ip> "source ~/miniconda3/etc/profile.d/conda.sh && conda activate isaaclab && cd ~/magiclab_rl_lab && python -u scripts/train_monitor.py --once --terrain gentle 2>/dev/null"
 
-   scp phh@192.168.120.155:~/magiclab_rl_lab/logs/rsl_rl/magiclab_z1_12dof_velocity/best_models.json \
-       "D:/Desktop_Files/GPU-Train/RTX6000/Magicbot_Z1/best_models.json"
+   scp <user>@<server_ip>:~/magiclab_rl_lab/logs/rsl_rl/magiclab_z1_12dof_velocity/best_models.json \
+       "<your_data_path>"
    ```
 3. For each run in bestmodel_phase.json (that has data), generate plots on server:
    ```bash
-   ssh phh@192.168.120.155 "cd ~/magiclab_rl_lab && source ~/miniconda3/etc/profile.d/conda.sh && conda activate isaaclab && python scripts/plot_learning_curves.py --log_root logs/rsl_rl/magiclab_z1_12dof_velocity --output_dir plots --focus_run <FULL_DIR_NAME>"
+   ssh <user>@<server_ip> "cd ~/magiclab_rl_lab && source ~/miniconda3/etc/profile.d/conda.sh && conda activate isaaclab && python scripts/plot_learning_curves.py --log_root logs/rsl_rl/magiclab_z1_12dof_velocity --output_dir plots --focus_run <FULL_DIR_NAME>"
    ```
 4. Download and organize into per-run folders (same as `--focus` flow)
 5. Generate PDF report for each run:
    ```bash
-   cd "D:/Desktop_Files/GPU-Train/RTX6000/Magicbot_Z1"
+   cd "<your_data_path>"
    python scripts/gen_report_pdf.py --alias <ALIAS>
    ```
 6. Open all generated PDFs
@@ -255,14 +255,14 @@ Only regenerate the PDF report from existing plot PNGs (skip server plot generat
 1. Verify all 4 PNGs exist in `plots/<alias>/`
 2. **Update best_models.json**:
    ```bash
-   ssh phh@192.168.120.155 "source ~/miniconda3/etc/profile.d/conda.sh && conda activate isaaclab && cd ~/magiclab_rl_lab && python -u scripts/train_monitor.py --once --terrain gentle 2>/dev/null"
+   ssh <user>@<server_ip> "source ~/miniconda3/etc/profile.d/conda.sh && conda activate isaaclab && cd ~/magiclab_rl_lab && python -u scripts/train_monitor.py --once --terrain gentle 2>/dev/null"
 
-   scp phh@192.168.120.155:~/magiclab_rl_lab/logs/rsl_rl/magiclab_z1_12dof_velocity/best_models.json \
-       "D:/Desktop_Files/GPU-Train/RTX6000/Magicbot_Z1/best_models.json"
+   scp <user>@<server_ip>:~/magiclab_rl_lab/logs/rsl_rl/magiclab_z1_12dof_velocity/best_models.json \
+       "<your_data_path>"
    ```
 3. Run:
    ```bash
-   cd "D:/Desktop_Files/GPU-Train/RTX6000/Magicbot_Z1"
+   cd "<your_data_path>"
    python scripts/gen_report_pdf.py --alias <ALIAS>
    ```
 4. Open the PDF
@@ -272,7 +272,7 @@ Only regenerate the PDF report from existing plot PNGs (skip server plot generat
 | Error | Action |
 |-------|--------|
 | SSH connection refused | Remind user to connect aTrust VPN |
-| `plot_learning_curves.py` not found | Script may not be uploaded yet; offer to create it from local copy at `D:/Desktop_Files/GPU-Train/RTX6000/Magicbot_Z1/scripts/plot_learning_curves.py` |
+| `plot_learning_curves.py` not found | Script may not be uploaded yet; offer to create it from local copy at `<your_data_path>` |
 | No TensorBoard events | Run may not have started or crashed; check training log |
 | Python import error (tensorboard) | Install: `pip install tensorboard matplotlib` |
 | SCP fails | Check VPN, try with `-o StrictHostKeyChecking=no` |

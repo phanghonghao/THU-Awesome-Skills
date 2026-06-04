@@ -1,0 +1,10 @@
+﻿__pycache__/
+*.pyc
+*.pyo
+.DS_Store
+Thumbs.db
+.wiki-sync.json
+.feishu/
+ai_gen_output/
+tmp/
+outputs/

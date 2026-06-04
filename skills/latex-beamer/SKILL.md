@@ -2,7 +2,7 @@
 name: latex-beamer
 description: >-
   LaTeX Beamer 幻灯片制作 - 将 Markdown 转换为 Beamer 演示文稿。
-  支持 CJKutf8/ctex 中文、数学公式、图片、表格。适用于答辩、汇报、演讲。
+  支持 ctex 中文、数学公式、图片、表格。适用于答辩、汇报、演讲。
 ---
 
 # LaTeX Beamer 智能同步 Skill
@@ -15,7 +15,22 @@ description: >-
 1. **不存在则生成** - 如果 .tex 文件不存在，从 .md 完整生成
 2. **存在则同步** - 如果 .tex 已存在，先检测 .md 变化，然后增量更新
 3. **双向同步** - 支持 .md 和 .tex 内容的智能对比和同步
-4. **双版本支持** - 自动生成 CJKutf8 (pdflatex) 和 ctex (XeLaTeX) 两个版本
+4. **单版本输出** - 统一使用 ctex (XeLaTeX) 编译，兼容中英文
+5. **PPTX 输出** - `--pptx` 跳过 PDF 编译，直接从 .tex 生成 PPTX
+
+## 命令行标志
+
+| 标志 | 说明 | 行为 |
+|------|------|------|
+| *(无标志)* | 默认流程 | Step 1→2/3→4 (PDF 编译) → 5 (可选 PPTX) |
+| `--pptx` | 仅生成 PPTX | 跳过 Step 4 (PDF 编译)，直接走 Step 5 (读取 .tex → 生成 gen_pptx.py → 执行) |
+| `--pptx <path>` | 指定路径 + 仅 PPTX | 定位到 `<path>` 目录，跳过 PDF 编译，直接生成 PPTX |
+
+### `--pptx` 的使用场景
+
+1. **已有 .tex 和 .pdf，只需要 PPTX** — 不需要重新编译 PDF，直接从 .tex 生成 PPTX
+2. **快速迭代 PPTX 排版** — 修改 gen_pptx.py 后重新执行，不用等 xelatex 编译
+3. **没有 MiKTeX 环境** — 不需要 xelatex，只要有 .tex 文件就能生成 PPTX
 
 ## Workflow
 
@@ -26,12 +41,16 @@ description: >-
 ```bash
 # 检查文件是否存在
 ls docs/presentation/templates/latex/xxx/main.tex
-ls docs/presentation/templates/latex/xxx/main_ctex.tex
 ```
 
 **判断逻辑**：
 - 如果不存在 → 走 **Step 2: 完整生成流程**
 - 如果存在 → 走 **Step 3: 增量同步流程**
+
+**`--pptx` 跳转逻辑**：
+- 如果用户传入 `--pptx` 且 .tex 已存在 → **跳过 Step 2/3/4，直接走 Step 5**
+- 如果用户传入 `--pptx` 但 .tex 不存在 → **先走 Step 2 生成 .tex，然后跳过 Step 4，走 Step 5**
+- 如果用户传入 `--pptx` 指向 .tex 文件路径 → **直接读取该 .tex，走 Step 5**
 
 ---
 
@@ -57,29 +76,14 @@ ls docs/presentation/templates/latex/xxx/main_ctex.tex
 - **Beamer 演示文稿**: `\documentclass{beamer}`
 - **Article 文档**: `\documentclass{article}`
 
-### 2.3 生成双版本 .tex 文件
-
-#### 版本 A: CJKutf8 (pdflatex 兼容)
-
-```latex
-\documentclass[aspectratio=169, 10pt]{beamer}
-\usepackage{CJKutf8}
-% ... 其他设置
-\begin{document}
-\begin{CJK*}{UTF8}{gbsn}
-% 内容
-\end{CJK*}
-\end{document}
-```
-
-#### 版本 B: ctex (XeLaTeX，支持生僻字)
+### 2.3 生成 .tex 文件（XeLaTeX + ctex）
 
 ```latex
 \documentclass[aspectratio=169, 10pt]{beamer}
 \usepackage[UTF8]{ctex}
 % ... 其他设置
 \begin{document}
-% 内容（无需 CJK* 环境）
+% 内容（无需 CJK* 环境，原生支持中英文）
 \end{document}
 ```
 
@@ -307,7 +311,7 @@ sources/
 
    | 优先级 | 内容类型 | 同步要求 | 示例 |
    |--------|----------|----------|------|
-   | **必须** | 人名信息 | .tex → .md | "洪誌慧" |
+   | **必须** | 人名信息 | .tex → .md | "<姓名>" |
    | **必须** | 项目名称 | .tex → .md | "清园书享" |
    | **必须** | 新增图片 | .tex → .md | 新增图片引用 |
    | **应该** | 核心数据 | .tex ↔ .md | "4000万" |
@@ -512,11 +516,9 @@ isbn_sample.png → ["isbn"] → 匹配: "软件闭环功能"
 
 根据 .md 的新结构重新排序
 
-### 3.4 同步双版本
+### 3.4 同步 .tex 文件
 
-更新 `main.tex` 和 `main_ctex.tex` 两个版本：
-- CJKutf8 版本：确保 `\begin{CJK*}...\end{CJK*}` 正确包裹
-- ctex 版本：无需 CJK* 环境，直接使用中文
+更新 `main.tex`（XeLaTeX + ctex 版本）中的变化部分。
 
 ---
 
@@ -576,11 +578,10 @@ A & B \\
 ```
 <project_folder>/
 ├── <name>.md            # Markdown 主源文件
-├── main_ctex.tex        # ctex 版本 (XeLaTeX)
-├── main_ctex.pdf        # Beamer PDF (animate 动画, 需 Acrobat Reader)
+├── main.tex             # XeLaTeX + ctex 版本
+├── main.pdf             # Beamer PDF (animate 动画, 需 Acrobat Reader)
 ├── gen_pptx.py          # python-pptx 生成脚本 (LLM 根据 .tex 自动生成)
 ├── main.pptx            # PPTX (GIF 原生动画, 全平台兼容, 精美排版)
-├── README.md            # 使用说明
 └── sources/             # 图片目录
     ├── image1.png
     ├── demo.gif         # GIF 原文件 (PPTX 直接嵌入)
@@ -588,9 +589,6 @@ A & B \\
     │   ├── frame_0.png
     │   └── ...
     └── ...
-
-docs/documentation/
-└── 项目分享答辩框架.md  # 对应的 Markdown 源文件
 ```
 
 ---
@@ -612,9 +610,7 @@ docs/documentation/
 ✅ docs/documentation/项目分享答辩框架.md
    - 添加图片引用（4张）
    - 添加更新日志
-✅ docs/presentation/.../main.tex
-   - 新增 3 个页面
-✅ docs/presentation/.../main_ctex.tex
+✅ main.tex
    - 新增 3 个页面
 
 ### 新增页面:
@@ -666,7 +662,7 @@ ISBN样例
 - 新增 SolidWorks 硬件结构设计图
 - 新增开发原型配套图
 - 新增 ISBN 识别功能测试截图
-- 同步更新团队信息（洪誌慧、李佳昊、潘洪浩）
+- 同步更新团队信息（<姓名>、<姓名>、<姓名>）
 ```
 
 ---
@@ -681,40 +677,102 @@ ISBN样例
 # 进入工作目录
 cd <folder_path>
 
-# XeLaTeX 编译 ctex 版本（推荐）
-xelatex -interaction=nonstopmode main_ctex.tex
-xelatex -interaction=nonstopmode main_ctex.tex  # 第二遍，生成正确目录
-
-# 备选: pdflatex 编译 CJKutf8 版本
-# pdflatex -interaction=nonstopmode main.tex
-# pdflatex -interaction=nonstopmode main.tex
+# XeLaTeX 编译（推荐）
+xelatex -interaction=nonstopmode main.tex
+xelatex -interaction=nonstopmode main.tex  # 第二遍，生成正确目录
 ```
 
-### 4.2 编译后清理辅助文件（可选）
+### 4.2 编译后重叠检测（必须执行）
+
+**每次编译后，必须检查 Overfull 警告并修复，直到无内容溢出。**
+
+```bash
+# 检测垂直溢出（内容超出页面高度，导致可见重叠）
+xelatex -interaction=nonstopmode main.tex 2>&1 | grep "Overfull \\\\vbox"
+
+# 检测水平溢出（表格/图片超出页面宽度）
+xelatex -interaction=nonstopmode main.tex 2>&1 | grep "Overfull \\\\hbox"
+```
+
+#### 判断规则
+
+| 警告类型 | 严重程度 | 含义 | 处理方式 |
+|---------|---------|------|---------|
+| `Overfull \vbox` | **严重** | 内容超出页面高度，页面间内容重叠 | **必须修复** |
+| `Overfull \hbox` (固定值，每页都有) | 无害 | frametitle 装饰线条的全宽 `\rule{\paperwidth}` | 忽略 |
+| `Overfull \hbox` (变化值) | 需修复 | 表格/图片/代码框超出文本宽度 | 用 `adjustbox` 或缩小尺寸 |
+
+#### 自动修复流程
+
+```python
+# 编译后自动执行以下检测和修复循环
+while True:
+    warnings = check_overfull("main.tex")  # 编译并提取警告
+
+    vbox_issues = [w for w in warnings if "Overfull \\vbox" in w]
+    hbox_issues = [w for w in warnings if "Overfull \\hbox" in w and not is_frametitle_rule(w)]
+
+    if not vbox_issues and not hbox_issues:
+        break  # 无重叠，完成
+
+    # 修复 vbox 溢出（内容太多）
+    for issue in vbox_issues:
+        fix_vbox_overflow(issue)  # 缩小字号、减少内容、压缩间距
+
+    # 修复 hbox 溢出（内容太宽）
+    for issue in hbox_issues:
+        fix_hbox_overflow(issue)  # 用 adjustbox 包裹表格、缩小图片宽度
+```
+
+#### 常见修复手法
+
+**vbox 溢出（内容太高）**：
+1. 减小字号：`\small` → `\scriptsize` → `\tiny`
+2. 压缩列表间距：`\begin{itemize}\setlength{\itemsep}{1pt}`
+3. 减少 `\vspace` 间距
+4. 拆分内容到两页
+5. 减少表格行数（只保留关键行）
+
+**hbox 溢出（内容太宽）**：
+1. 用 `adjustbox` 包裹表格：
+   ```latex
+   \usepackage{adjustbox}
+   \begin{adjustbox}{max width=\textwidth}
+     \begin{tabular}{...} ... \end{tabular}
+   \end{adjustbox}
+   ```
+2. 缩小图片宽度：`width=0.9\textwidth` → `width=0.8\textwidth`
+3. 减少 `columns` 宽度总和（不超过 0.96\textwidth）
+4. 代码框使用 `breaklines=true`
+
+**识别无害的 hbox（frametitle 装饰线）**：
+- 如果 `Overfull \hbox` 的值在所有页面都相同（如 56.9pt），且出现在 `\end{frame}` 行
+- 这来自 frametitle 模板中的 `{\color{nvgreen}\rule{\paperwidth}{2pt}}`
+- **这是设计预期**，不需要修复
+
+### 4.3 编译后清理辅助文件（可选）
 
 ```bash
 rm -f *.aux *.log *.out *.toc *.nav *.snm *.vrb *.fls *.fdb_latexmk *.synctex.gz
 ```
 
-### 4.3 工作区文件结构
+### 4.4 工作区文件结构
 
 同一文件夹管理同名文件：
 
 ```
 <project_folder>/
 ├── <name>.md            # Markdown 源文件
-├── main_ctex.tex        # ctex 版本 (XeLaTeX)
-├── main.tex             # CJKutf8 版本 (pdflatex)
-├── main_ctex.pdf        # 编译输出的 PDF
+├── main.tex             # XeLaTeX + ctex 版本
+├── main.pdf             # 编译输出的 PDF
 ├── gen_pptx.py          # python-pptx 生成脚本 (LLM 根据 .tex 自动生成)
 ├── main.pptx            # 精美 PPTX (复刻 Beamer 排版)
-├── README.md            # 使用说明
 └── sources/             # 图片目录
     ├── image1.png
     └── ...
 ```
 
-### 4.4 打开文件夹（/latex-beamer <path>）
+### 4.5 打开文件夹（/latex-beamer <path>）
 
 当用户提供文件夹路径时：
 
@@ -724,7 +782,11 @@ rm -f *.aux *.log *.out *.toc *.nav *.snm *.vrb *.fls *.fdb_latexmk *.synctex.gz
    - 有 .tex 但无 .pdf → 走 Step 4 编译
    - .MD 比 .tex 新 → 走 Step 3 增量同步 + 编译
    - 三者都有且 .tex 最新 → 提示"已是最新"
-3. **执行对应步骤** → 生成/同步 + 编译 + 生成 PPTX
+3. **`--pptx` 路由**:
+   - 用户传入 `--pptx` → 跳过 Step 2/3/4，直接走 **Step 5**（读取 .tex → gen_pptx.py → 执行）
+   - 有 .tex 无 .pdf + `--pptx` → 不编译 PDF，直接生成 PPTX
+   - 无 .tex + `--pptx` → 先走 Step 2 生成 .tex（不编译），再走 Step 5
+4. **执行对应步骤** → 生成/同步 + 编译 + 生成 PPTX
 
 ---
 
@@ -750,7 +812,7 @@ rm -f *.aux *.log *.out *.toc *.nav *.snm *.vrb *.fls *.fdb_latexmk *.synctex.gz
 .tex 文件 → LLM 读取并理解结构 → 生成 gen_pptx.py → python-pptx 执行 → .pptx
 ```
 
-1. LLM 读取 `main_ctex.tex` 的完整内容
+1. LLM 读取 `main.tex` 的完整内容
 2. 解析每页 `\begin{frame}` 的结构：标题、分栏 `\begin{columns}`、block、图片、表格
 3. 生成 `gen_pptx.py` 脚本，用 python-pptx 精确复刻每个元素的位置、颜色、内容
 4. 执行脚本生成 `main.pptx`
@@ -862,7 +924,7 @@ prs.save(os.path.join(BASE, "main.pptx"))
 ### 5.5 执行命令
 
 ```bash
-/c/Users/20174/AppData/Local/Programs/Python/Python314/python.exe gen_pptx.py
+python gen_pptx.py
 ```
 
 **注意**：
@@ -884,11 +946,10 @@ prs.save(os.path.join(BASE, "main.pptx"))
 ```
 <project_folder>/
 ├── <name>.md            # Markdown 主源文件
-├── main_ctex.tex        # ctex 版本 (XeLaTeX)
-├── main_ctex.pdf        # Beamer PDF（animate 动画，需 Acrobat Reader）
+├── main.tex             # XeLaTeX + ctex 版本
+├── main.pdf             # Beamer PDF（animate 动画，需 Acrobat Reader）
 ├── gen_pptx.py          # python-pptx 生成脚本（LLM 根据 .tex 自动生成）
 ├── main.pptx            # PPTX（GIF 原生动画，全平台兼容，精美排版）
-├── README.md            # 使用说明
 └── sources/             # 图片目录
     ├── image1.png
     ├── demo.gif         # GIF 原文件（PPTX 直接嵌入）
@@ -914,15 +975,17 @@ prs.save(os.path.join(BASE, "main.pptx"))
 - "更新幻灯片" — 根据 .md 更新 .tex
 - "生成 LaTeX" — 完整生成新文件
 - "/latex" — 执行智能同步
+- "/latex-beamer --pptx" — 仅生成 PPTX（跳过 PDF 编译）
+- "/latex-beamer --pptx path/to/folder" — 指定路径，仅生成 PPTX
+- "/latex-beamer --pptx path/to/slides.tex" — 从指定 .tex 文件直接生成 PPTX
 
 ---
 
 ## Dependencies
 
-- **MiKTeX** — `C:\MiKTeX\miktex\bin\x64\` (xelatex + pdflatex)
-- **xelatex** — 用于 ctex 版本（推荐，支持生僻字）
-- **pdflatex** — 用于 CJKutf8 版本
+- **MiKTeX** — `C:\MiKTeX\miktex\bin\x64\` (xelatex)
+- **xelatex** — 编译 ctex 版本（支持中英文、生僻字）
 - **python-pptx** — `pip install python-pptx` (LLM 生成 gen_pptx.py 复刻 Beamer 排版)
 - **Pillow** — `pip install Pillow` (GIF 帧提取，PDF animate 用)
-- **Python 3.14** — `/c/Users/20174/AppData/Local/Programs/Python/Python314/python.exe`
-- **在线编译**: Overleaf（需将 Compiler 改为 XeLaTeX 使用 ctex 版本）
+- **Python 3.14** — `python`
+- **在线编译**: Overleaf（将 Compiler 设为 XeLaTeX 即可）
