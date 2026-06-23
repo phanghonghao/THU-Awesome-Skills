@@ -123,6 +123,17 @@ def render_education(items) -> str:
     return section("教育背景", "\n".join(out))
 
 
+def render_bullets(item) -> str:
+    """把 item['bullets'] 列表渲染成项目符号 <ul>；无则空串。"""
+    bullets = item.get("bullets") if isinstance(item, dict) else None
+    if not isinstance(bullets, list) or not bullets:
+        return ""
+    items_html = "".join(
+        f"<li>{esc(str(b).strip())}</li>" for b in bullets if str(b).strip()
+    )
+    return f'<ul class="r-bullets">{items_html}</ul>' if items_html else ""
+
+
 def render_projects(items) -> str:
     if not items:
         return ""
@@ -150,7 +161,10 @@ def render_projects(items) -> str:
             text = f"{text}。{details}" if text else details
         detail = f'<div class="r-detail">{esc(text)}</div>' if text else ""
 
-        out.append(f'<div class="r-entry">{head}{role}{detail}</div>')
+        # 项目符号要点列表（可选；与 desc 互不冲突，有则追加）
+        bullets = render_bullets(p)
+
+        out.append(f'<div class="r-entry">{head}{role}{detail}{bullets}</div>')
     if not out:
         return ""
     return section("核心科研与项目经历", "\n".join(out))
@@ -170,7 +184,8 @@ def render_lab(items) -> str:
         desc = ""
         if str(it.get("desc", "")).strip():
             desc = f'<div class="r-detail">{esc(it["desc"])}</div>'
-        out.append(f'<div class="r-entry">{head}{desc}</div>')
+        bullets = render_bullets(it)
+        out.append(f'<div class="r-entry">{head}{desc}{bullets}</div>')
     if not out:
         return ""
     return section("实验室经历", "\n".join(out))
@@ -191,7 +206,8 @@ def render_clubs_competitions(clubs, comps) -> str:
         desc = ""
         if str(c.get("desc", "")).strip():
             desc = f'<div class="r-detail">{esc(c["desc"])}</div>'
-        out.append(f'<div class="r-entry">{head}{role}{desc}</div>')
+        bullets = render_bullets(c)
+        out.append(f'<div class="r-entry">{head}{role}{desc}{bullets}</div>')
 
     for c in comps or []:
         if not isinstance(c, dict):
@@ -203,27 +219,42 @@ def render_clubs_competitions(clubs, comps) -> str:
         desc = ""
         if str(c.get("desc", "")).strip():
             desc = f'<div class="r-detail">{esc(c["desc"])}</div>'
-        out.append(f'<div class="r-entry">{head}{desc}</div>')
+        bullets = render_bullets(c)
+        out.append(f'<div class="r-entry">{head}{desc}{bullets}</div>')
 
     if not out:
         return ""
     return section("社团与竞赛经历", "\n".join(out))
 
 
+SKILL_LABELS = {
+    "software": "专业软件",
+    "languages": "编程语言",
+    "hardware": "硬件平台",
+    "languages_spoken": "语言",
+    "eda_tools": "EDA 工具",
+    "professional": "专业能力",
+    "ai_tools": "AI 工具",
+    "tools": "工具",
+    "frameworks": "框架",
+    "certificates": "证书",
+}
+
+
+def _humanize_label(key: str) -> str:
+    return key.replace("_", " ").capitalize()
+
+
 def render_skills(sk) -> str:
-    if not sk:
+    if not sk or not isinstance(sk, dict):
         return ""
-    rows = [
-        ("专业软件", "software"),
-        ("编程语言", "languages"),
-        ("硬件平台", "hardware"),
-        ("语言", "languages_spoken"),
-    ]
     out = []
-    for label, key in rows:
-        val = sk.get(key, "")
-        if val and str(val).strip():
-            out.append(f'<div class="r-skill-row"><span class="label">{label}：</span>{esc(val)}</div>')
+    for key, val in sk.items():  # 保留 YAML 中的书写顺序
+        v = str(val).strip() if val else ""
+        if not v:
+            continue
+        label = SKILL_LABELS.get(key) or _humanize_label(key)
+        out.append(f'<div class="r-skill-row"><span class="label">{esc(label)}：</span>{esc(v)}</div>')
     if not out:
         return ""
     return section("技能储备", "\n".join(out))
@@ -266,10 +297,12 @@ def load_data(path: Path) -> dict:
 
 # ---------- 主流程 ----------
 def parse_args():
-    ap = argparse.ArgumentParser(description="简历数据 → HTML（无需 LaTeX）。")
+    ap = argparse.ArgumentParser(description="简历数据(YAML/JSON) → HTML + PDF（一条命令，无需 LaTeX）。")
     ap.add_argument("data", help="数据文件路径 (.yaml/.yml/.json)")
     ap.add_argument("--template", default="classic_single", help="模板名(templates 目录下)或绝对路径")
     ap.add_argument("--out", default="resume.html", help="输出 HTML 路径")
+    ap.add_argument("--pdf", default=None, help="输出 PDF 路径（默认与 HTML 同名 .pdf）")
+    ap.add_argument("--no-pdf", action="store_true", help="只生成 HTML，不自动出 PDF")
     return ap.parse_args()
 
 
@@ -281,6 +314,29 @@ def resolve_template(name: str) -> Path:
     if candidate.exists():
         return candidate
     sys.exit(f"找不到模板: {name}（在 {TEMPLATES_DIR} 下也没找到）")
+
+
+def render_pdf_for(html_path: Path, pdf_arg) -> None:
+    """best-effort 自动 HTML→PDF。失败不影响已生成的 HTML。"""
+    pdf_path = Path(pdf_arg) if pdf_arg else html_path.with_suffix(".pdf")
+    try:
+        from render_pdf import count_pages, detect_browser, print_to_pdf
+    except Exception as e:  # 模块加载失败
+        print(f"⚠️ 无法加载渲染模块 render_pdf：{e}", file=sys.stderr)
+        return
+    try:
+        browser = detect_browser(None)
+        print_to_pdf(browser, html_path, pdf_path)
+        pages = count_pages(pdf_path)
+        print(f"PDF 已生成: {pdf_path.resolve()}")
+        if pages is not None:
+            print(f"页数: {pages}")
+    except FileNotFoundError as e:
+        print(f"⚠️ 未生成 PDF（找不到 Chrome/Edge）：{e}", file=sys.stderr)
+        print("   可在浏览器打开 HTML 后「打印 → 另存为 PDF」。", file=sys.stderr)
+    except Exception as e:
+        print(f"⚠️ PDF 生成失败：{e}", file=sys.stderr)
+        print("   HTML 已生成，可手动打印为 PDF。", file=sys.stderr)
 
 
 def main() -> int:
@@ -313,6 +369,10 @@ def main() -> int:
     out_path.write_text(html, encoding="utf-8")
     print(f"HTML 已生成: {out_path.resolve()}")
     print(f"模板: {args.template}")
+
+    # 一条命令自动出 PDF（开箱即用）；--no-pdf 可跳过
+    if not args.no_pdf:
+        render_pdf_for(out_path, args.pdf)
     return 0
 
 
