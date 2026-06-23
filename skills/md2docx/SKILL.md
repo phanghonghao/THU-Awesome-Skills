@@ -1,52 +1,61 @@
-# Markdown to Word (docx) Writer
+---
+name: md2docx
+description: >-
+  Fill an existing Word `.docx` template using data and images from a Markdown
+  file. Use when the user mentions `md2docx`, wants to write Markdown content
+  back into a Word document, populate Word tables, preserve merged cells, or
+  insert images into a `.docx` template.
+---
 
-Read a Markdown file containing table data and images, then fill the data into an existing Word (.docx) document's tables using python-docx. Handles merged cells correctly.
+# md2docx
 
-## When to Use
+Fill an existing Word document from a Markdown source with the bundled `md2docx.py` script.
 
-- User says "md2docx", "fill docx", "write to word", "填入docx"
-- User has a .md file with data and wants it written back into the original .docx template
-- User needs to fill calculated data and images into a Word document's tables
+## Run
 
-## How to Use
+From this skill directory, run:
 
 ```bash
-python ~/.claude/skills/md2docx/md2docx.py "<input.md>" "<template.docx>" ["<output.docx>"]
+python md2docx.py "<input.md>" "<template.docx>" ["<output.docx>"]
 ```
 
-- **input.md** (required): Markdown file containing the data (tables with values to fill)
-- **template.docx** (required): Original Word document to modify
-- **output.docx** (optional): Output file path. Default: `<template>_filled.docx`
+## Inputs
 
-The script reads the Markdown tables and fills matching data into the Word document's tables, handling:
-- Merged cells (horizontal and vertical) via XML inspection
-- Image insertion from relative paths in the Markdown
-- Numeric and text data filling
+Require:
+- a Markdown file containing table data and optional image references
+- an existing `.docx` template to modify
 
-## Architecture
+If the output path is omitted, let the script create the default filled output file.
 
-The md2docx.py script:
+## What the Script Handles
 
-1. **Parses the Markdown** to extract table data and image references
-2. **Inspects the docx** table structure using XML to detect merged cells
-3. **Matches columns** by header text between MD tables and docx tables
-4. **Fills data** using direct XML manipulation (`w:tc` elements) to avoid python-docx's merged cell mapping issues
-5. **Inserts images** via python-docx's `add_picture` API
+Use the script for:
+- matching Markdown table data into Word tables
+- merged cells, including horizontal and vertical merges
+- inserting images referenced from Markdown
+- mixed numeric and text values
 
-### Key Functions
+## Workflow
 
-- `get_tcs(table, row_idx)` → Get actual tc elements for a row
-- `set_tc_text(tc, text)` → Set cell text via XML (bypasses merge mapping)
-- `set_tc_image(tc, img_path, width_cm)` → Insert image into cell
-
-### Handling Merged Cells
-
-The script inspects each row's `w:tc` elements directly to:
-- Detect `gridSpan` (horizontal merges) — correctly maps to physical columns
-- Detect `vMerge` (vertical merges) — writes value only once to the merge origin cell
-- Avoids python-docx's `row.cells[N]` which returns wrong cell objects for merged regions
+1. Confirm the Markdown file exists.
+2. Confirm the template `.docx` exists.
+3. Run `md2docx.py`.
+4. Report the output document path.
+5. If image paths are relative, resolve them relative to the Markdown file location first.
 
 ## Dependencies
 
-- `python-docx`: `python -m pip install python-docx`
-- `lxml`: Usually included with python-docx
+Require `python-docx`.
+
+If it is missing, install it with:
+
+```bash
+python -m pip install python-docx
+```
+
+## Operating Notes
+
+- Do not rebuild the document from scratch when the task is to fill an existing template.
+- Prefer the script over manual XML edits unless the script itself needs patching.
+- If headers in Markdown and Word do not match well enough for filling, explain which columns failed to align.
+- If the user asks for a change in mapping behavior, inspect and patch `md2docx.py` rather than hand-editing the `.docx`.

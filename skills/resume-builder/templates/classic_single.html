@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>简历</title>
+<style>
+  /* ===== 字体与基础 ===== */
+  html, body {
+    margin: 0;
+    padding: 0;
+    font-family: "Microsoft YaHei", "微软雅黑", "PingFang SC", "Source Han Sans SC",
+                 "Noto Sans CJK SC", "SimSun", sans-serif;
+    font-size: 9.5pt;
+    line-height: 1.5;
+    color: #222;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* 纸张/边距：由 Chrome/Edge 的 --print-to-pdf 读取 */
+  @page {
+    size: A4;
+    margin: 13mm 15mm;
+  }
+
+  /* 屏幕预览：模拟 A4 纸张外观；打印时由 @page 接管 */
+  .resume-print {
+    max-width: 180mm;      /* A4 宽 210mm - 左右 15mm 边距 */
+    margin: 0 auto;
+    padding: 0;
+  }
+  @media screen {
+    body { background: #f0f0f0; padding: 24px 0; }
+    .resume-print {
+      background: #fff;
+      padding: 18mm 15mm;
+      box-shadow: 0 2px 12px rgba(0,0,0,.15);
+    }
+  }
+
+  /* ===== 页眉 ===== */
+  .r-header { margin-bottom: 6px; }
+  .r-name {
+    font-size: 19pt;
+    font-weight: 700;
+    margin: 0;
+    letter-spacing: 1px;
+  }
+  .r-name .en {
+    font-size: 11pt;
+    font-weight: 600;
+    color: #555;
+    margin-left: 8px;
+    letter-spacing: .5px;
+  }
+  .r-contact, .r-address, .r-target {
+    font-size: 9pt;
+    margin-top: 2px;
+    color: #333;
+  }
+  .r-target strong { color: #000; }
+
+  /* ===== 板块标题（对应 \section + \titlerule） ===== */
+  .r-section { margin-top: 9px; }
+  .r-section-title {
+    font-size: 11.5pt;
+    font-weight: 700;
+    margin: 0 0 4px 0;
+    padding-bottom: 2px;
+    border-bottom: 1.5px solid #333;
+    break-after: avoid;       /* 标题不与内容分离 */
+  }
+
+  /* ===== 条目 ===== */
+  .r-entries { margin-top: 2px; }
+  .r-entry {
+    margin-top: 4px;
+    break-inside: avoid;      /* 单个条目尽量不分页 */
+  }
+  .r-entry:first-child { margin-top: 0; }
+
+  .r-entry-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+  }
+  .r-title { font-weight: 700; }
+  .r-date { font-weight: 400; color: #444; white-space: nowrap; margin-left: 8px; }
+
+  .r-sub {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    color: #333;
+  }
+  .r-sub .city { color: #444; margin-left: 8px; }
+
+  .r-role { font-style: italic; color: #333; margin-top: 1px; }
+  .r-detail { margin-top: 1px; }
+
+  /* ===== 技能（标签: 值） ===== */
+  .r-skill-row { margin-top: 2px; }
+  .r-skill-row:first-child { margin-top: 0; }
+  .r-skill-row .label { font-weight: 700; }
+</style>
+</head>
+<body>
+<div class="resume-print">
+
+<!--HEADER-->
+
+<!--EDUCATION-->
+
+<!--PROJECTS-->
+
+<!--LAB-->
+
+<!--CLUBS_COMPETITIONS-->
+
+<!--SKILLS-->
+
+<!--SOCIAL-->
+
+</div>
+</body>
+</html>

@@ -22,7 +22,7 @@ python -m pip install pdf2docx 2>&1 | tail -3
 ## Usage
 
 ```bash
-python "<SKILL_ROOT>/pdf2word/pdf2word.py" <input.pdf> [output.docx] [--start PAGE] [--end PAGE] [--pages 0,1,2]
+python "C:/Users/20174/.claude/skills/pdf2word/pdf2word.py" <input.pdf> [output.docx] [--start PAGE] [--end PAGE] [--pages 0,1,2]
 ```
 
 ### Arguments
@@ -39,16 +39,16 @@ python "<SKILL_ROOT>/pdf2word/pdf2word.py" <input.pdf> [output.docx] [--start PA
 
 ```bash
 # Convert entire PDF
-python "<SKILL_ROOT>/pdf2word/pdf2word.py" "report.pdf"
+python "C:/Users/20174/.claude/skills/pdf2word/pdf2word.py" "report.pdf"
 
 # Convert with custom output name
-python "<SKILL_ROOT>/pdf2word/pdf2word.py" "report.pdf" "output.docx"
+python "C:/Users/20174/.claude/skills/pdf2word/pdf2word.py" "report.pdf" "output.docx"
 
 # Convert pages 1-3 (0-indexed: 0,1,2)
-python "<SKILL_ROOT>/pdf2word/pdf2word.py" "report.pdf" --start 0 --end 3
+python "C:/Users/20174/.claude/skills/pdf2word/pdf2word.py" "report.pdf" --start 0 --end 3
 
 # Convert specific pages
-python "<SKILL_ROOT>/pdf2word/pdf2word.py" "report.pdf" --pages 0,2,4
+python "C:/Users/20174/.claude/skills/pdf2word/pdf2word.py" "report.pdf" --pages 0,2,4
 ```
 
 ## Workflow

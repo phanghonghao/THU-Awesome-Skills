@@ -104,19 +104,19 @@ logo：![alt text](sources/logo.jpg)
 
 ```bash
 # 仅生成 HTML（可在浏览器预览，链接/QR 码可点击）
-python "<SKILL_ROOT>/poster/poster_gen.py" "<MD文件路径>"
+python "C:/Users/20174/.claude/skills/poster/poster_gen.py" "<MD文件路径>"
 
 # 生成 HTML + PDF（强制单页 A4）
-python "<SKILL_ROOT>/poster/poster_gen.py" "<MD文件路径>" --pdf
+python "C:/Users/20174/.claude/skills/poster/poster_gen.py" "<MD文件路径>" --pdf
 
 # 生成 HTML + PDF + PNG（PNG 由 PDF→300dpi 转换）
-python "<SKILL_ROOT>/poster/poster_gen.py" "<MD文件路径>" --pdf --png
+python "C:/Users/20174/.claude/skills/poster/poster_gen.py" "<MD文件路径>" --pdf --png
 
 # 仅生成 PNG（自动先生成 PDF 再转 PNG）
-python "<SKILL_ROOT>/poster/poster_gen.py" "<MD文件路径>" --png
+python "C:/Users/20174/.claude/skills/poster/poster_gen.py" "<MD文件路径>" --png
 
 # 带插画图片
-python "<SKILL_ROOT>/poster/poster_gen.py" "<MD文件路径>" --pdf --png \
+python "C:/Users/20174/.claude/skills/poster/poster_gen.py" "<MD文件路径>" --pdf --png \
   --illustrations img1.png img2.png img3.png img4.png
 ```
 
@@ -136,7 +136,7 @@ python "<SKILL_ROOT>/poster/poster_gen.py" "<MD文件路径>" --pdf --png \
 
 ```bash
 # 生成文案并复制到剪贴板（Windows UTF-8）
-python "<SKILL_ROOT>/poster/poster_gen.py" "<MD文件路径>" --copy 2>/dev/null > /tmp/poster_copy.txt && powershell -Command "Get-Content -Path '<TEMP_DIR>/poster_copy.txt' -Encoding UTF8 | Set-Clipboard"
+python "C:/Users/20174/.claude/skills/poster/poster_gen.py" "<MD文件路径>" --copy 2>/dev/null > /tmp/poster_copy.txt && powershell -Command "Get-Content -Path 'C:\Users\20174\AppData\Local\Temp\poster_copy.txt' -Encoding UTF8 | Set-Clipboard"
 ```
 
 **流程**: MD 解析 → LLM 语义精简（每条主题控制在 15 字以内） → 格式化文案 → UTF-8 管道 → PowerShell 写入剪贴板
@@ -218,7 +218,7 @@ python "<SKILL_ROOT>/poster/poster_gen.py" "<MD文件路径>" --copy 2>/dev/null
 ## 文件结构
 
 ```
-<SKILL_ROOT>/poster/
+C:/Users/20174/.claude/skills/poster/
 ├── skill.md              # 本文件
 ├── poster_gen.py          # 主脚本（MD 解析 + Jinja2 模板 + QR 生成 + PDF/PNG 转换 + 溢出检测）
 └── references/

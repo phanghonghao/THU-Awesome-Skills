@@ -95,62 +95,22 @@ def parse_markdown(md_content):
 
     # 提取学生信息
     info = DEFAULT_INFO.copy()
-    name_match = re.search(r'\*\*姓名\*\*:\s*(.+?)(?:\s*\\quad|\s*\*\*|$)', md_content)
+    name_match = re.search(r'^\*\*姓名\*\*:\s*(.+?)\s*$', md_content, re.MULTILINE)
     if name_match:
         info["name"] = name_match.group(1).strip()
 
-    id_match = re.search(r'\*\*学号\*\*:\s*(.+?)(?:\s*\\quad|\s*\*\*|$)', md_content)
+    id_match = re.search(r'^\*\*学号\*\*:\s*(.+?)\s*$', md_content, re.MULTILINE)
     if id_match:
         info["student_id"] = id_match.group(1).strip()
 
-    class_match = re.search(r'\*\*班级\*\*:\s*(.+?)(?:\s*\\quad|\s*\*\*|$)', md_content)
+    class_match = re.search(r'^\*\*班级\*\*:\s*(.+?)\s*$', md_content, re.MULTILINE)
     if class_match:
         info["class"] = class_match.group(1).strip()
 
-    date_match = re.search(r'\*\*提交日期\*\*:\s*(.+)', md_content)
-    submit_date = date_match.group(1).strip() if date_match else datetime.now().strftime("%Y-%m-%d")
+    submit_date_match = re.search(r'^\*\*提交日期\*\*:\s*(.+?)\s*$', md_content, re.MULTILINE)
+    submit_date = submit_date_match.group(1).strip() if submit_date_match else datetime.now().strftime("%Y-%m-%d")
 
     return title, info, submit_date
-
-
-def extract_text_from_pdf(pdf_path: str) -> str:
-    """从 PDF 文件提取文字（使用 pdfplumber）
-
-    pdfplumber 对中文 PDF 的文字提取效果最好，能正确处理中文编码。
-    对于表格也能较好地保留结构。
-
-    Args:
-        pdf_path: PDF 文件路径
-
-    Returns:
-        str: 提取的文字内容
-    """
-    if not HAS_PDFPLUMBER:
-        print("警告: pdfplumber 未安装，无法提取 PDF 文字")
-        print("安装命令: pip install pdfplumber")
-        return ""
-
-    text_parts = []
-    try:
-        with pdfplumber.open(pdf_path) as pdf:
-            for page_num, page in enumerate(pdf.pages):
-                text = page.extract_text()
-                if text and text.strip():
-                    text_parts.append(text.strip())
-
-                # 提取表格（如果有）
-                tables = page.extract_tables()
-                for table in tables:
-                    if table:
-                        for row in table:
-                            # 将表格行转为文字
-                            cells = [str(cell) if cell else "" for cell in row]
-                            text_parts.append("\t".join(cells))
-
-    except Exception as e:
-        print(f"❌ 提取 PDF 文字时出错: {e}")
-
-    return "\n\n".join(text_parts)
 
 
 def extract_images_from_pdf(pdf_path, output_dir="sources"):
@@ -361,15 +321,8 @@ def extract_content_from_file(file_path: str, output_dir: str = "sources") -> di
     }
 
     if file_type == 'pdf':
-        # PDF 处理：同时提取文字和图片
+        # PDF 处理
         print(f"📄 读取 PDF 文件: {file_path}")
-        print("🔍 正在提取文字（使用 pdfplumber）...")
-        result['text'] = extract_text_from_pdf(file_path)
-        if result['text']:
-            print(f"✅ 提取到 {len(result['text'])} 个字符")
-        else:
-            print("⚠️  未提取到文字（可能是扫描型 PDF，建议使用 OCR）")
-        print("🔍 正在提取图片...")
         result['images'] = extract_images_from_pdf(file_path, output_dir)
 
     elif file_type == 'image':
@@ -850,6 +803,7 @@ def insert_image_to_documents(
         return False
 
     tex_path = str(Path(md_path).with_suffix('.tex'))
+    md_dir = Path(md_path).resolve().parent
 
     # 读取文件
     try:
@@ -864,11 +818,19 @@ def insert_image_to_documents(
     tex_image_refs = []
 
     for img in image_files:
+        img_ref = str(img).replace('\\', '/')
+        img_path = Path(img)
+        if img_path.is_absolute():
+            try:
+                img_ref = os.path.relpath(str(img_path), str(md_dir)).replace('\\', '/')
+            except ValueError:
+                img_ref = str(img_path).replace('\\', '/')
+
         md_image_refs.append(f"\n**{caption or '图片'}**：\n")
-        md_image_refs.append(f"![{caption or '图片'}](sources/{img})\n")
+        md_image_refs.append(f"![{caption or '图片'}]({img_ref})\n")
 
         tex_image_refs.append("\n\\begin{center}\n")
-        tex_image_refs.append(f"\\includegraphics[width=0.7\\textwidth]{{{img}}}\\\\\n")
+        tex_image_refs.append(f"\\includegraphics[width=0.7\\textwidth]{{{img_ref}}}\\\\\n")
         tex_image_refs.append(f"\\small{{{caption or '图片'}}}\n")
         tex_image_refs.append("\\end{center}\n")
 
@@ -901,6 +863,31 @@ def insert_image_to_documents(
             f.write(tex_content)
 
     return True
+
+
+def collect_local_figure_files(figure_input: str) -> List[str]:
+    """收集本地题图文件，支持单文件、目录或逗号分隔列表。"""
+    if not figure_input:
+        return []
+
+    figure_paths = [p.strip() for p in figure_input.split(',') if p.strip()]
+    image_extensions = {'.png', '.jpg', '.jpeg', '.bmp', '.gif', '.webp', '.pdf'}
+    collected: List[str] = []
+
+    for item in figure_paths:
+        path = Path(item)
+        if not path.exists():
+            print(f"⚠️ 跳过不存在的题图路径: {item}")
+            continue
+
+        if path.is_dir():
+            for child in sorted(path.iterdir()):
+                if child.is_file() and child.suffix.lower() in image_extensions:
+                    collected.append(str(child))
+        elif path.is_file():
+            collected.append(str(path))
+
+    return collected
 
 
 def md_to_latex(md_content, title, info, submit_date):
@@ -948,6 +935,41 @@ def md_to_latex(md_content, title, info, submit_date):
 def convert_markdown_to_latex(md_text):
     """转换 Markdown 语法到 LaTeX"""
 
+    def escape_text(s):
+        return (
+            s.replace('\\', r'\textbackslash{}')
+             .replace('&', r'\&')
+             .replace('%', r'\%')
+             .replace('$', r'\$')
+             .replace('#', r'\#')
+             .replace('_', r'\_')
+             .replace('{', r'\{')
+             .replace('}', r'\}')
+        )
+
+    def convert_code_spans(text):
+        def repl(match):
+            content = match.group(1)
+            if re.search(r'[\\_^=<>]|<=|>=|<=>|\b[A-Za-z]+\([^`]*\)', content):
+                return r'$' + content + r'$'
+            return r'\texttt{' + escape_text(content) + r'}'
+
+        return re.sub(r'`([^`]+)`', repl, text)
+
+    def convert_inline_math(text):
+        text = re.sub(
+            r'\$\$(.+?)\$\$',
+            lambda m: r'\[' + m.group(1).strip() + r'\]',
+            text,
+            flags=re.DOTALL,
+        )
+        text = re.sub(
+            r'(?<!\$)\$(?!\$)(.+?)(?<!\$)\$(?!\$)',
+            lambda m: r'\(' + m.group(1).strip() + r'\)',
+            text,
+        )
+        return text
+
     lines = md_text.split('\n')
     latex_lines = []
     in_list = False
@@ -968,6 +990,11 @@ def convert_markdown_to_latex(md_text):
             latex_lines.append(r'\subsection{' + line[3:].strip() + '}')
         elif line.startswith('# '):
             latex_lines.append(r'\section{' + line[2:].strip() + '}')
+        elif re.match(r'^\s*!\[.*?\]\((.*?)\)\s*$', line):
+            img = re.match(r'^\s*!\[.*?\]\((.*?)\)\s*$', line).group(1)
+            latex_lines.append(r'\begin{center}')
+            latex_lines.append(r'\includegraphics[width=0.9\textwidth]{' + img + r'}')
+            latex_lines.append(r'\end{center}')
         # 列表转换
         elif line.strip().startswith('- ') or line.strip().startswith('* '):
             if not in_list:
@@ -977,9 +1004,9 @@ def convert_markdown_to_latex(md_text):
         # 加粗转换
         else:
             converted = line
+            converted = convert_code_spans(converted)
             converted = re.sub(r'\*\*(.+?)\*\*', r'\\textbf{\1}', converted)
-            # 数学公式转换：$$..$$ → \[...\]，$..$ 保持不变
-            converted = re.sub(r'\$\$(.+?)\$\$', r'\\[\1\\]', converted, flags=re.DOTALL)
+            converted = convert_inline_math(converted)
             latex_lines.append(converted)
 
     if in_list:
@@ -996,6 +1023,8 @@ def compile_pdf(tex_path, max_runs=2):
                 ['pdflatex', '-interaction=nonstopmode', tex_path],
                 capture_output=True,
                 text=True,
+                encoding='utf-8',
+                errors='replace',
                 cwd=os.path.dirname(tex_path)
             )
             if result.returncode != 0:
@@ -1219,6 +1248,8 @@ def validate_latex_compilation(tex_path: str) -> Tuple[bool, str]:
             ['pdflatex', '-interaction=nonstopmode', '-draftmode', tex_path],
             capture_output=True,
             text=True,
+            encoding='utf-8',
+            errors='replace',
             cwd=os.path.dirname(tex_path),
             timeout=30
         )
@@ -1353,12 +1384,17 @@ def main():
         print("  --image-url <url>    直接从URL下载图片")
         print("  --image-count <n>    图片数量（默认3）")
         print("  --image-pos <pos>    插入位置: end/after_section（默认end）")
+        print("  --figure <path>      插入本地原题图（文件/目录/逗号分隔）")
+        print("  --figure-pos <pos>   题图插入位置: end/after_section（默认after_section）")
+        print("  --figure-section <s> 指定插入章节标记，如 ## 5-1")
+        print("  --figure-caption <c> 题图说明（默认原题图）")
         print()
         print("示例:")
         print("  python md_to_latex.py assignment.md")
         print("  python md_to_latex.py homework.pdf --extract")
         print("  python md_to_latex.py worksheet.png --extract")
         print("  python md_to_latex.py report.docx --extract")
+        print("  python md_to_latex.py assignment.md --figure sources/pdf_pages --figure-section '## 5-1'")
         sys.exit(1)
 
     # 处理命令行选项
@@ -1504,6 +1540,60 @@ def main():
                 # 非交互模式或编码错误，自动插入
                 insert_image_to_documents(md_path, downloaded, position=image_pos, caption="")
                 print("✅ 图片引用已添加到文档")
+
+        sys.exit(0)
+
+    elif '--figure' in sys.argv:
+        figure_idx = sys.argv.index('--figure')
+        if figure_idx + 1 >= len(sys.argv):
+            print("❌ --figure 需要提供文件或目录路径")
+            sys.exit(1)
+
+        md_path = sys.argv[1]
+        if not os.path.exists(md_path):
+            print(f"❌ Markdown 文件不存在: {md_path}")
+            sys.exit(1)
+
+        figure_input = sys.argv[figure_idx + 1]
+        figure_pos = "after_section"
+        figure_section = None
+        figure_caption = "原题图"
+
+        if '--figure-pos' in sys.argv:
+            pos_idx = sys.argv.index('--figure-pos')
+            if pos_idx + 1 < len(sys.argv):
+                figure_pos = sys.argv[pos_idx + 1]
+
+        if '--figure-section' in sys.argv:
+            section_idx = sys.argv.index('--figure-section')
+            if section_idx + 1 < len(sys.argv):
+                figure_section = sys.argv[section_idx + 1]
+
+        if '--figure-caption' in sys.argv:
+            caption_idx = sys.argv.index('--figure-caption')
+            if caption_idx + 1 < len(sys.argv):
+                figure_caption = sys.argv[caption_idx + 1]
+
+        figure_files = collect_local_figure_files(figure_input)
+        if not figure_files:
+            print("❌ 未找到可插入的题图文件")
+            sys.exit(1)
+
+        if figure_pos == "after_section" and not figure_section:
+            print("❌ 使用 after_section 时需要提供 --figure-section")
+            sys.exit(1)
+
+        if insert_image_to_documents(
+            md_path,
+            figure_files,
+            position=figure_pos,
+            section_marker=figure_section,
+            caption=figure_caption
+        ):
+            print(f"✅ 已插入 {len(figure_files)} 张题图")
+        else:
+            print("❌ 题图插入失败")
+            sys.exit(1)
 
         sys.exit(0)
 

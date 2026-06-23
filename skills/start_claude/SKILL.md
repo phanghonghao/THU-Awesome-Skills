@@ -117,7 +117,9 @@ Token:   9b32...kRkKld
 
 ## Available Profiles
 
-Read from `~/.claude/claude_profiles.json`. Default profiles: `key1`, `key2`, `key3`, `key4`.
+Read from `~/.claude/claude_profiles.json`. Available profiles: `key2` (default, 智谱 GLM), `key4` (智谱 GLM), `openrouter` (Claude via OpenRouter), `suanli` (算力中转 GLM, model `z-ai/glm-5.1`).
+
+> **base_url rule:** Claude Code appends `/v1/messages` itself, so `anthropic_base_url` must be the bare host with **no trailing `/v1`** (e.g. `https://api.suanli.cn`, NOT `https://api.suanli.cn/v1`) — a trailing `/v1` produces `/v1/v1/messages` → 404, which surfaces as "model not found".
 
 ## Other Modes
 

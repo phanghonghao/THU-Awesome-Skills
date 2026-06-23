@@ -34,17 +34,19 @@ def extract_title(path: Path, text: str) -> str:
 
 
 def extract_numbered_sections(text: str):
+    """Extract sections matching '## N. title' or 'N. title' patterns."""
     sections = []
     current = None
     for line in text.splitlines():
         s = line.rstrip()
-        m = re.match(r"^\s*(\d+)\.\s+(.+)$", s)
+        # Match "## N. title" (markdown header) or plain "N. title"
+        m = re.match(r"^\s*##\s*(\d+)\.\s+(.+)$", s) or re.match(r"^\s*(\d+)\.\s+(.+)$", s)
         if m:
             if current:
                 sections.append(current)
             current = {"title": clean_text(m.group(2)), "items": []}
             continue
-        if current and s.strip():
+        if current and s.strip() and not s.strip().startswith("#"):
             current["items"].append(clean_text(s))
     if current:
         sections.append(current)
@@ -112,7 +114,7 @@ def build_payload(path: Path):
 def build_prompt(payload: dict) -> str:
     bullets = "\n".join(f"- {x}" for x in payload["takeaways"])
     tech = "\n".join(f"- {x}" for x in payload["technical_highlights"])
-    return f"""Design a single-page A4 vertical Xiaohongshu-style educational poster in Chinese.
+    return f"""Design a single-page A4 vertical educational study-note poster in Chinese.
 
 Content source type: personal reflection markdown.
 
@@ -129,13 +131,16 @@ Bottom summary:
 {payload['summary']}
 
 Layout requirements:
-- A4 vertical poster
-- polished Xiaohongshu study-note aesthetic
+- A4 vertical poster, content must fill the entire page evenly
+- polished study-note aesthetic
 - warm ivory background, editorial cards, modern Chinese typography
 - information-dense but readable
-- no browser UI, no fake screenshots
+- no browser UI, no fake screenshots, no watermark, no brand logos
 - emphasize title, structured cards, key bullets, and technical numbers
 - make it look like a shareable one-page poster for social media
+- cards must use flex:1 to auto-stretch and distribute evenly across columns
+- no large white space at bottom; content should balance to fill the page
+- use two-column grid layout with align-items:stretch for balanced fill
 """
 
 

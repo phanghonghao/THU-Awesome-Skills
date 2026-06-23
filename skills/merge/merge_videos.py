@@ -48,6 +48,17 @@ def parse_template(template_str):
 
 
 def _get_font(size=20):
+    # Try Chinese-capable fonts first (Windows)
+    for name in [
+        "C:/Windows/Fonts/msyh.ttc",       # Microsoft YaHei (Chinese)
+        "C:/Windows/Fonts/simhei.ttf",      # SimHei (Chinese)
+        "C:/Windows/Fonts/simsun.ttc",      # SimSun (Chinese)
+    ]:
+        try:
+            return ImageFont.truetype(name, size)
+        except (OSError, IOError):
+            continue
+    # Fallback to Western fonts
     for name in ["Consolas.ttf", "DejaVuSansMono.ttf", "arial.ttf", "LiberationMono-Regular.ttf"]:
         try:
             return ImageFont.truetype(name, size)

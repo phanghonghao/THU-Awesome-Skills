@@ -11,7 +11,7 @@ Merge multiple MP4 videos into a single grid-layout video with optional labels.
 
 The merge tool is a permanent CLI script at:
 ```
-<SKILL_ROOT>\merge\merge_videos.py
+C:\Users\20174\.claude-key3\skills\merge\merge_videos.py
 ```
 
 **DO NOT generate temp scripts.** Always call this script directly via `python`.
@@ -39,7 +39,7 @@ Auto-detect template when `-t` is omitted:
 3. Auto-generate labels from folder/filenames if not provided
 4. Run the permanent script directly:
    ```bash
-   python "<SKILL_ROOT>\merge\merge_videos.py" <video_paths> -t <template> --labels <labels...> -o <output>
+   python "C:\Users\20174\.claude-key3\skills\merge\merge_videos.py" <video_paths> -t <template> --labels <labels...> -o <output>
    ```
 5. Report output path, frame count, file size
 6. **Never create temp scripts or temp files**
@@ -66,28 +66,28 @@ python merge_videos.py VIDEO [VIDEO ...] [-t TEMPLATE] [--labels LABEL [LABEL ..
 
 **2x2 grid (4 videos in a directory):**
 ```bash
-python "<SKILL_ROOT>\merge\merge_videos.py" \
+python "C:\Users\20174\.claude-key3\skills\merge\merge_videos.py" \
   "dir/v1.mp4" "dir/v2.mp4" "dir/v3.mp4" "dir/v4.mp4" \
   -t 2x2 --labels "iter 1700" "iter 3000" "iter 5000" "iter 7000"
 ```
 
 **3x1 vertical (auto-detect from 3 videos):**
 ```bash
-python "<SKILL_ROOT>\merge\merge_videos.py" \
+python "C:\Users\20174\.claude-key3\skills\merge\merge_videos.py" \
   "dir/v1.mp4" "dir/v2.mp4" "dir/v3.mp4" \
   --labels "IsaacLab" "MuJoCo Humanoid" "MuJoCo Manual"
 ```
 
 **3x2 grid (6 videos, custom output):**
 ```bash
-python "<SKILL_ROOT>\merge\merge_videos.py" \
+python "C:\Users\20174\.claude-key3\skills\merge\merge_videos.py" \
   v1.mp4 v2.mp4 v3.mp4 v4.mp4 v5.mp4 v6.mp4 \
   -t 3x2 -o result/comparison.mp4
 ```
 
 **Custom NxM grid (e.g. 2x3):**
 ```bash
-python "<SKILL_ROOT>\merge\merge_videos.py" \
+python "C:\Users\20174\.claude-key3\skills\merge\merge_videos.py" \
   v1.mp4 v2.mp4 v3.mp4 v4.mp4 v5.mp4 v6.mp4 \
   -t 2x3
 ```

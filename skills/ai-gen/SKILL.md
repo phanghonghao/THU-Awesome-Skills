@@ -94,12 +94,12 @@ Header: "模型预设"
 
 **文生图:**
 ```bash
-python "<SKILL_ROOT>/ai-gen/generate.py" --mode image --prompt "..." --provider <provider> --output "ai_gen_output/001_image.png"
+python "C:/Users/20174/.claude/skills/ai-gen/generate.py" --mode image --prompt "..." --provider <provider> --output "ai_gen_output/001_image.png"
 ```
 
 **文生视频:**
 ```bash
-python "<SKILL_ROOT>/ai-gen/generate.py" --mode video --prompt "..." --provider <provider> --output "ai_gen_output/002_video.mp4"
+python "C:/Users/20174/.claude/skills/ai-gen/generate.py" --mode video --prompt "..." --provider <provider> --output "ai_gen_output/002_video.mp4"
 ```
 
 注意：
