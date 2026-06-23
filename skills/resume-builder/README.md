@@ -28,15 +28,15 @@ resume-builder/
 cp examples/resume_data_example.yaml resume_data.yaml
 #   （编辑 resume_data.yaml）
 
-# 2. 生成 HTML
-python scripts/build_resume.py resume_data.yaml --out resume.html
-
-# 3. 生成 PDF
-python scripts/render_pdf.py resume.html resume.pdf
+# 2. 一条命令出 HTML + PDF（自动用 Chrome/Edge 打印，无需 LaTeX）
+python scripts/build_resume.py resume_data.yaml
+#   → 生成 resume.html 和同名 resume.pdf
+#   只想要 HTML：加 --no-pdf
 ```
 
 依赖：仅需 **Python 3** + **Chrome 或 Edge**（系统已有即可）。
 读 YAML 需 `pip install pyyaml`；不想装就用 `.json` 数据文件。
+> 找不到浏览器时会自动降级为只出 HTML，并提示在浏览器里手动打印为 PDF。
 
 ## 输入来源（在 Claude Code 里直接对话即可）
 
@@ -53,15 +53,17 @@ Claude 会自动：提取文本 → 按 schema 重组 → build → render，并
 ```yaml
 personal:        { name_cn, name_en, phone, email, address, target }
 education:       [{ school, start, end, city, major, gpa, courses, optional }]
-projects:        [{ name, start, end, role, tech, desc, details }]
-lab_experience:  [{ name, start, end, desc }]
-clubs:           [{ name, start, end, role, desc }]
+projects:        [{ name, start, end, role, tech, desc, details, bullets }]   # bullets = 要点列表
+lab_experience:  [{ name, start, end, desc, bullets }]
+clubs:           [{ name, start, end, role, desc, bullets }]
 competitions:    [{ name, date, desc }]
-skills:          { software, languages, hardware, languages_spoken }
+skills:          { 任意 key: 值 }   # 如 software/eda_tools/professional/ai_tools/languages… 保留书写顺序
 social_practice: { org, desc }
 ```
 
 - 每个经历板块都是列表，可写任意条数。
+- `bullets`（可选）：把多条要点渲染成项目符号列表，与 `desc`/`tech` 可共存。
+- `skills` 支持任意字段名（已知 key 自动配中文标签，未知 key 自动首字母大写）。
 - 任意字段留空 → 该内容自动不渲染。
 - `education[].optional: true` → 保留数据但不显示那一段。
 
