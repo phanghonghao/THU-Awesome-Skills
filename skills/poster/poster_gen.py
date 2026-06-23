@@ -132,7 +132,7 @@ def parse_md(md_text, md_dir):
         m = re.match(r'^\d+\.\s+(.+)', line_stripped)
         if m:
             content = m.group(1).strip()
-            # Extract class info in parentheses: <姓名>（机械34）topic
+            # Extract class info in parentheses: 潘洪浩（机械34）topic
             class_name = ""
             cm = re.match(r'^(.+?)[（(](.+?)[）)]\s*(.*)', content)
             if cm:

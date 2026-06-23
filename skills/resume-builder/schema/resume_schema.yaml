@@ -1,0 +1,76 @@
+# ============================================================
+# 简历数据格式说明 (resume data schema)
+# ------------------------------------------------------------
+# 这是 resume-builder skill 期望的数据结构。
+# 直接复制 examples/resume_data_example.yaml 填写即可，无需死记本文件。
+#
+# 全局规则：
+#   - 每个经历板块都是【列表】，可写任意条数（旧的固定槽位限制已取消）。
+#   - 任意字段留空 "" 或省略，对应内容自动不渲染。
+#   - education 条目设 optional: true 可整体隐藏（保留数据但不显示）。
+#   - 文本可含中文、英文、常见符号；脚本会自动做 HTML 转义。
+#   - 日期写法自由，如 "2024.01" / "2024 年 1 月" / "至今"。
+# ============================================================
+
+# --- 个人信息（页眉）---
+personal:
+  name_cn: "张三"                  # 中文姓名（必填）
+  name_en: "ZHANG SAN"             # 英文姓名（可留空，留空则不显示英文）
+  phone: "+86 138xxxxxxxx"         # 电话
+  email: "example@mail.com"        # 邮箱
+  address: "XX省XX市XX大学"          # 地址
+  target: "机器人系统研发与项目管理"   # 求职意向
+
+# --- 教育背景（列表）---
+education:
+  - school: "清华大学 (Tsinghua University)"
+    start: "2023.09"
+    end: "至今"
+    city: "北京"
+    major: "机械工程 本科(大三)"
+    gpa: "GPA 3.0/4.0 (国际生专业排名第2)"
+    courses: "核心课程: 机械设计、控制工程、机电系统实践"
+    optional: false               # true = 保留数据但不显示这一段
+
+# --- 核心科研与项目经历（列表）---
+projects:
+  - name: "项目名称"
+    start: "2024.01"
+    end: "至今"
+    role: "项目负责人"             # 可留空
+    tech: "技术栈描述"             # 可留空
+    desc: "项目描述"
+    details: "具体内容描述"        # 可留空
+
+# --- 实验室经历（列表）---
+lab_experience:
+  - name: "清华大学机电实验室"
+    start: "2025.07"
+    end: "2025.08"
+    desc: "经历描述"
+
+# --- 社团经历（列表）---
+clubs:
+  - name: "清华大学未来智能机器人兴趣团 (FuRoC)"
+    start: "2024.03"
+    end: "2024.09"
+    role: "硬件组核心成员、外联部长"   # 可留空
+    desc: "经历描述"
+
+# --- 竞赛经历（列表）---
+competitions:
+  - name: "机械迷城模型车设计大赛"
+    date: "2024.05"               # 竞赛用单个 date 字段
+    desc: "负责软件调试，实现循迹、越野与爬坡功能，获三等奖"
+
+# --- 技能储备 ---
+skills:
+  software: "Matlab/Simulink, SolidWorks, CAD, Unity, Python"
+  languages: "C++, Python, C, Matlab"
+  hardware: "STM32, QArm (4DOF), Arduino"
+  languages_spoken: "中文、英文"
+
+# --- 社会实践 ---
+social_practice:
+  org: "马来西亚北京留学生会"
+  desc: "组织参访京东方 (BOE) 科技园，促进中马学生科技交流"

@@ -11,6 +11,7 @@
 | `/assignment done` | 编译 MD 为 PDF |
 | `/assignment auto` | 一键完成：解答 + 编译 |
 | `/assignment revise` | 检查并修复 LaTeX 格式 |
+| `/assignment figure` | 插入本地原题图到 MD/TEX |
 | `/assignment image <关键词>` | 联网搜索下载图片 |
 
 支持的输入格式：**PDF、图片 (PNG/JPG)、Word (.docx)、Markdown**
@@ -72,7 +73,14 @@ pip install pdfplumber easyocr python-docx mammoth requests beautifulsoup4 sympy
 
 # 或分步操作
 /assignment complete    # 自动解答
+/assignment figure      # 插入原题图
 /assignment done        # 编译 PDF
+```
+
+如果要插入本地题图到底稿中，等价脚本命令为：
+
+```bash
+python md_to_latex.py assignment.md --figure sources/pdf_pages --figure-section "## 5-1"
 ```
 
 ## 目录结构

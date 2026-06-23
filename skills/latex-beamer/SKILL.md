@@ -311,7 +311,7 @@ sources/
 
    | 优先级 | 内容类型 | 同步要求 | 示例 |
    |--------|----------|----------|------|
-   | **必须** | 人名信息 | .tex → .md | "<姓名>" |
+   | **必须** | 人名信息 | .tex → .md | "洪誌慧" |
    | **必须** | 项目名称 | .tex → .md | "清园书享" |
    | **必须** | 新增图片 | .tex → .md | 新增图片引用 |
    | **应该** | 核心数据 | .tex ↔ .md | "4000万" |
@@ -662,7 +662,7 @@ ISBN样例
 - 新增 SolidWorks 硬件结构设计图
 - 新增开发原型配套图
 - 新增 ISBN 识别功能测试截图
-- 同步更新团队信息（<姓名>、<姓名>、<姓名>）
+- 同步更新团队信息（洪誌慧、李佳昊、潘洪浩）
 ```
 
 ---
@@ -924,7 +924,7 @@ prs.save(os.path.join(BASE, "main.pptx"))
 ### 5.5 执行命令
 
 ```bash
-python gen_pptx.py
+/c/Users/20174/AppData/Local/Programs/Python/Python314/python.exe gen_pptx.py
 ```
 
 **注意**：
@@ -987,5 +987,5 @@ python gen_pptx.py
 - **xelatex** — 编译 ctex 版本（支持中英文、生僻字）
 - **python-pptx** — `pip install python-pptx` (LLM 生成 gen_pptx.py 复刻 Beamer 排版)
 - **Pillow** — `pip install Pillow` (GIF 帧提取，PDF animate 用)
-- **Python 3.14** — `python`
+- **Python 3.14** — `/c/Users/20174/AppData/Local/Programs/Python/Python314/python.exe`
 - **在线编译**: Overleaf（将 Compiler 设为 XeLaTeX 即可）

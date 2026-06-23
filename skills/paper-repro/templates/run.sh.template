@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+# Minimal-reproduction launcher template.
+# The agent fills in: ENTRY, STEPS, and any minimal-override flags, then runs.
+# Always runs in an isolated subdir; steps/time are intentionally tiny.
+set -e
+cd "$(dirname "$0")"
+
+ENTRY="train.py"        # <-- agent sets: the training entry script
+STEPS=200               # <-- agent sets: tiny step count for minimal repro
+
+echo "[run.sh] minimal reproduction — CPU/single-GPU, ${STEPS} steps"
+python "$ENTRY" \
+  --steps "$STEPS" \
+  ${EXTRA_FLAGS}        # <-- agent injects --d_model/--batch_size/--seq_len etc.
+
+echo "[run.sh] summarizing..."
+python summarize_eval.py --log train_log.csv --chart training_curve.png \
+  --task "${TASK_NAME:-minimal reproduction}"
+echo "[run.sh] done."

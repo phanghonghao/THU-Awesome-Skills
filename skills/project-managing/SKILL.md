@@ -1,142 +1,80 @@
-# 项目会议记录与进度管理
+---
+name: project-managing
+description: >-
+  Create and update project meeting records and progress-tracking documents.
+  Use when the user asks to write meeting minutes,鏁寸悊浼氳绾, track project
+  progress, update action items, summarize blockers, assign owners, or maintain
+  a structured project status record.
+---
 
-管理项目会议记录和进度跟踪表。
+# Project Managing
 
-## 使用方法
+Create and maintain structured project meeting notes and progress summaries.
 
-在需要创建或更新会议记录时，运行：
-```
-/project-managing
-```
+## Working Style
 
-## 触发条件
+Prefer Markdown unless the user explicitly asks for another format.
 
-当用户提到以下任一关键词时自动触发：
-- "会议记录"
-- "项目进度"
-- "进度表"
-- "/project-managing"
+Extract and organize:
+- meeting title
+- date and time
+- participants
+- agenda
+- decisions
+- action items
+- owners
+- due dates
+- blockers
+- next steps
 
-## 功能说明
+Do not leave notes as a raw transcript when a structured summary is expected.
 
-1. **创建新记录**: 生成标准格式的会议记录进度表
-2. **更新已有记录**: 修改现有记录中的任务状态
-3. **自动归档**: 按日期保存到对应文件夹
-4. **支持 .docx 导入**: 可读取 UTF-8 含中文的 .docx 文件并转换为进度表格式
+## Default Output Structure
 
-### DOCX 文件处理
-
-当用户提供 `.docx` 文件路径时：
-1. 使用 Python 的 `python-docx` 库读取文件内容
-2. 提取文本内容（支持 UTF-8 中文）
-3. 根据内容结构解析任务列表
-4. 生成标准格式的进度表
-
-**安装依赖**（如未安装）：
-```bash
-pip install python-docx
-```
-
-## 记录模板
-
-### 文件命名格式
-`会议记录_项目管理/MM_DD/MM_DD_会议纪要_进度表.MD`
-
-### 模板结构
+Use this structure unless the user already has a required template:
 
 ```markdown
-# 项目进度跟踪表
+# <椤圭洰鍚?浼氳璁板綍
 
-**项目名称**: [项目名称]
-**会议日期**: YYYY年MM月DD日 HH:MM-HH:MM
-**更新日期**: YYYY年MM月DD日 HH:MM
+## 鍩烘湰淇℃伅
+- 浼氳涓婚锛?- 鏃堕棿锛?- 鍙備細浜猴細
+- 璁板綍浜猴細
 
----
+## 璁涓庣粨璁?| 璁 | 璁ㄨ缁撹 | 澶囨敞 |
+|---|---|---|
 
-## 👥 负责人 & 支持老师
+## 琛屽姩椤?| ID | 浠诲姟 | 璐熻矗浜?| 鎴鏃堕棿 | 鐘舵€?| 澶囨敞 |
+|---|---|---|---|---|---|
 
-| 板块 | 负责人 | 支持老师 |
-|------|--------|----------|
-| **[板块1]** | [姓名] | [老师] |
-| **[板块2]** | [姓名] | [老师] |
-| **[板块3]** | [姓名] | [老师] |
-| **项目事务** | 全员 | - |
+## 椋庨櫓涓庨樆濉?| 闂 | 褰卞搷 | 澶勭悊鏂规 | 璐熻矗浜?|
+|---|---|---|---|
 
----
-
-## 📋 进度跟踪表
-
-| ID | 任务项 | 负责人 | 状态 | 优先级 | 截止时间 | 备注 |
-|:--:|--------|:------:|:----:|:------:|:--------:|------|
-| **A** | **[大模块A]** | | | | | |
-| A1 | [具体任务] | [姓名] | ⬜ 待开始 | 🔴 高 | [日期] | [备注] |
-| A2 | [具体任务] | [姓名] | 🟡 进行中 | 🟡 中 | [日期] | [备注] |
-| **B** | **[大模块B]** | | | | | |
-| B1 | [具体任务] | [姓名] | ✅ 已完成 | 🟢 低 | [日期] | [备注] |
-
----
-
-## 📊 统计概览
-
-| 分类 | 数量 |
-|------|:----:|
-| 总任务数 | N |
-| 待开始 | X |
-| 进行中 | Y |
-| 已完成 | Z |
-| 完成率 | XX% |
-
----
-
-## 🎨 图例说明
-
-| 图例 | 含义 |
-|:----:|------|
-| ⬜ | 待开始 |
-| 🟡 | 进行中 |
-| ✅ | 已完成 |
-| 🔴 | 高优先级 |
-| 🟡 | 中优先级 |
-| 🟢 | 低优先级 |
-
----
-
-## 📝 更新说明
-
-1. **修改状态**: ⬜ 待开始 → 🟡 进行中 → ✅ 已完成
-2. **更新完成率**: 每次任务状态变化后更新统计概览
+## 涓嬫璺熻繘
+- 
 ```
 
-## 存放位置
+## Progress Update Rules
 
-- **大创项目**: `大创/会议记录_项目管理/`
-- **SRT项目**: `SRT-new-coord/会议记录_项目管理/`
+When updating an existing project record:
 
-## 使用流程
+1. Preserve the existing document structure if it is already usable.
+2. Update status fields instead of duplicating old tasks.
+3. Mark completed items clearly.
+4. Add new action items only when they are distinct.
+5. Keep owner and due-date fields explicit whenever the source material provides them.
 
-1. 用户触发skill后，询问是创建新记录还是更新已有记录
-2. 收集会议信息（项目名称、日期、参与人员、任务列表）
-3. 生成或更新对应的MD文件
-4. 保存到对应日期的文件夹中
+## Summarization Rules
 
----
+When the source is a transcript, chat log, or rough notes:
 
-## AllowedPrompts
+- compress repetitive discussion
+- keep concrete decisions
+- keep unresolved questions
+- convert vague promises into explicit action items only when ownership is clear
+- separate facts from assumptions
 
-```yaml
-- tool: Bash
-  prompt: install python-docx
-  description: 安装python-docx依赖包
+## Response Style
 
-- tool: Bash
-  prompt: mkdir.*会议记录_项目管理
-  description: 创建会议记录目录
-
-- tool: Bash
-  prompt: python.*docx
-  description: 使用python读取docx文件内容
-
-- tool: Write
-  prompt: 会议纪要_进度表
-  description: 创建会议记录进度表文件
-```
+Prefer concise, execution-oriented notes.
+Use tables for action items and blockers when that improves readability.
+Call out missing owners or missing deadlines instead of silently inventing them.

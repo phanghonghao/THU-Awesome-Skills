@@ -3,8 +3,8 @@
   [string]$OutputDir = '',
   [switch]$FixMathBackticks
 )
-$pre='<SKILL_ROOT>\md2tex\md_math_precheck.py'
-$core='<SKILL_ROOT>\md2tex\md2tex.py'
+$pre='C:\Users\20174\.codex\skills\md2tex\md_math_precheck.py'
+$core='C:\Users\20174\.codex\skills\md2tex\md2tex.py'
 if($FixMathBackticks){
   python $pre $InputMd --fix
 }else{

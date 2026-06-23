@@ -1,8 +1,8 @@
 # THU-Awesome-Skills
 
-> A collection of 36 general-purpose [Claude Code](https://docs.anthropic.com/en/docs/claude-code) custom skills for academic workflows, project management, and developer productivity.
+> A collection of 50 general-purpose [Claude Code](https://docs.anthropic.com/en/docs/claude-code) custom skills for academic workflows, project management, and developer productivity.
 >
-> 36 个通用型 [Claude Code](https://docs.anthropic.com/en/docs/claude-code) 自定义 Skill，覆盖学术工具、项目管理、开发效率等场景。
+> 50 个通用型 [Claude Code](https://docs.anthropic.com/en/docs/claude-code) 自定义 Skill，覆盖学术工具、项目管理、开发效率等场景。
 
 ---
 
@@ -71,6 +71,20 @@ Both sync tools include:
 | 34 | [pdf2word](skills/pdf2word/) | PDF → Word (.docx) preserving layout, tables, images | `/pdf2word` | PyMuPDF, python-docx |
 | 35 | [reflection2xhs](skills/reflection2xhs/) | Reflection Markdown → Xiaohongshu-style A4 poster | `/reflection2xhs` | OpenAI API (optional) |
 | 36 | [word2pdf](skills/word2pdf/) | Word (.doc/.docx) → PDF via Word COM or LibreOffice | `/word2pdf` | Microsoft Word or LibreOffice |
+| 37 | [resume-builder](skills/resume-builder/) | Resume (PDF/Word/MD/YAML) → single-column CN resume PDF, **no LaTeX** | `/resume-builder` | Chrome or Edge |
+| 38 | [paper-repro](skills/paper-repro/) | arXiv paper → understand + minimal reproduction + cost estimate | `/paper-repro` | PyMuPDF, git |
+| 39 | [web-search-fallback](skills/web-search-fallback/) | Zero-MCP web search & URL reader (arXiv/GitHub/S2/curl) | `/web-search-fallback` | curl, gh (optional) |
+| 40 | [jianying-editor](skills/jianying-editor/) | JianYing (剪映) AI auto-editing wrapper (record, subtitles, export) | `/jianying-editor` | JianYing, Python |
+| 41 | [certificate](skills/certificate/) | Auto-generate e-certificate PNGs from salon posters | `/certificate` | None |
+| 42 | [start_codex](skills/start_codex/) | Launch & manage Codex CLI instances with isolated API-key profiles | `/start_codex` | codex CLI |
+| 43 | [sys-health](skills/sys-health/) | One-shot read-only health snapshot of this machine (CPU/RAM/disk/GPU) | `/sys-health` | WSL2 (optional) |
+| 44 | [gpu-connect](skills/gpu-connect/) | SSH to a GPU server & report read-only status snapshot (GPU/disk/envs) | `/gpu-connect` | ssh |
+| 45 | [gpu-train](skills/gpu-train/) | Monitor & manage remote RL training on the RTX PRO 6000 over SSH | `/gpu-train` | ssh, Slurm |
+| 46 | [autodl-5090](skills/autodl-5090/) | Read-only monitor for RL training on the AutoDL RTX 5090 box (SSH) | `/autodl-5090` | ssh |
+| 47 | [rtx-training-capture](skills/rtx-training-capture/) | Verify RTX training results, record best-iter video, pull artifacts | `/rtx-training-capture` | ssh |
+| 48 | [unilab-train](skills/unilab-train/) | Monitor & manage UniLab RL training on local WSL (CPU-only) | `/unilab-train` | WSL2, UniLab |
+| 49 | [unilab-rollout-trace](skills/unilab-rollout-trace/) | Record headless rollout trace from a UniLab policy → 4-panel stability figure | `/unilab-rollout-trace` | UniLab, matplotlib |
+| 50 | [training-log-update](skills/training-log-update/) | Append/create the daily training-log entry in house style | `/training-log-update` | None |
 
 ---
 
@@ -309,6 +323,66 @@ Convert reflection Markdown files into polished single-page Xiaohongshu-style A4
 ### 36. word2pdf — Word 转 PDF
 
 Convert Word (.doc/.docx) to PDF. Auto-detects binary .doc vs .docx, then converts using Microsoft Word COM or LibreOffice headless.
+
+### 37. resume-builder — 无 LaTeX 简历生成器
+
+Turn any resume source (PDF / Word / Markdown / filled YAML / dictated) into a polished single-column Chinese resume PDF. **No LaTeX / MiKTeX / Overleaf** — renders an HTML template with the system Chrome/Edge headless `--print-to-pdf`.
+
+- Faithful port of a fixed single-column CN layout (education / projects / lab / clubs / skills …)
+- Variable-length sections, HTML-escaping, optional entries auto-skipped
+- Inspired by [Resume-Matcher](https://github.com/srbhr/Resume-Matcher)'s HTML → headless-browser → PDF approach
+
+### 38. paper-repro — 论文读懂 + 最小复现
+
+One-stop "understand + minimal reproduction" for papers. Input an arXiv URL/ID/keyword/local PDF → single-page HTML summary (via `/paper-html-onepage`) → find code, analyze full-repro requirements, plan a minimal repro, run a minimal-scale experiment, and estimate full reproduction cost.
+
+### 39. web-search-fallback — 零 MCP 联网搜索
+
+Local zero-MCP web search & URL reader. Automatic fallback when MCP `web_search`/`webReader` hit rate limits (429/quota), or proactively for academic/GitHub queries. Routes to arXiv API, GitHub API (gh/curl), Semantic Scholar API, and direct curl fetch.
+
+### 40. jianying-editor — 剪映自动化剪辑
+
+High-level wrapper (JyWrapper) around JianYing (剪映) for AI-assisted auto-editing — screen recording, asset import, subtitle generation, web motion synthesis, and project export.
+
+### 41. certificate — 电子证书生成
+
+Automatically generate electronic-certificate PNGs from salon/seminar posters (e.g. 名人堂证书).
+
+### 42. start_codex — Codex 实例管理
+
+Manage and launch Codex (codex CLI) instances with different API keys / profiles. Supports launch (isolated `CODEX_HOME`, new session), `--continue` (resume last session inside an isolated profile), and `--check` (test each key's availability). The root `~/.codex` is never touched.
+
+### 43. sys-health — 本机系统体检
+
+One-shot read-only health snapshot for this machine (AMD Ryzen 7 laptop, CPU-only RL in WSL2): CPU load, memory, swap, disk usage, SSD write activity from checkpoints, active training-process detection, and Windows host (CPU/disk/GPU).
+
+### 44. gpu-connect — GPU 服务器连接
+
+Connect to a GPU server over SSH and report a one-shot read-only status snapshot — connectivity, identity, GPU util/mem/temp, disk, RAM, CPU load, conda envs. Default target A100 (`ssh a100`); pass any configured alias (`autodl`, `spark`, `dreamzero`) or a raw remote command.
+
+### 45. gpu-train — 远程训练管理 (RTX PRO 6000)
+
+Monitor and manage remote RL training on the RTX PRO 6000 server over SSH — training status, tail logs, GPU usage, idle GPUs, my CUDA usage, Slurm jobs, failure analysis, simulation videos, multi-phase automation pipelines.
+
+### 46. autodl-5090 — AutoDL 5090 训练监控
+
+Lightweight, read-only monitor for RL training on the AutoDL RTX 5090 box over SSH. `--tail` follows live training logs and snapshots iteration/speed/ETA/metrics; `--status` gives a one-shot CPU/RAM/disk/GPU snapshot. Canonical call: `/autodl-5090 --tail --status`.
+
+### 47. rtx-training-capture — RTX 训练成果归档
+
+Check the latest training log, verify RTX training results, analyze success/failure, record the best-iteration video, and pull artifacts back to local.
+
+### 48. unilab-train — UniLab 本地训练管理
+
+Monitor and manage UniLab RL training on local WSL (CPU-only, no CUDA) — training status, tail logs with key metrics, best checkpoint, viser/TensorBoard viewers, resume interrupted runs, record Motrix demos.
+
+### 49. unilab-rollout-trace — UniLab Rollout 稳定性图
+
+Record a headless numeric rollout trace from a UniLab off-policy policy (SAC/FlashSAC) on MuJoCo, then plot a 4-panel stability figure (base height/fall, velocity tracking, effort, reward) with a one-line verdict. Works for any task.
+
+### 50. training-log-update — 训练日志更新
+
+Append or create the daily training-log entry (one `YYYY-MM-DD.md` per day) in the established house style — a one-line Headline plus explicit Done / Issues-and-fixes / Pending / Key-paths sections, with no media copied in (references real paths).
 
 ---
 

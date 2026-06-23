@@ -9,12 +9,21 @@ import mimetypes
 import os
 import re
 import shutil
+import subprocess
 import sys
 import tempfile
+import urllib.parse
 import xml.etree.ElementTree as ET
 
 
+# curl is the zero-dependency network fallback (mirrors /web-search-fallback
+# Route 1 & 4). It keeps the skill working when the `requests` library or the
+# MCP web_search / webReader tools are unavailable or rate-limited (429).
+CURL_BIN = shutil.which('curl')
+
+
 def ensure_deps():
+    global requests
     missing = []
     try:
         import requests  # noqa: F401
@@ -25,14 +34,70 @@ def ensure_deps():
     except Exception:
         missing.append('PyMuPDF')
     if missing:
-        import subprocess
         cmd = [sys.executable, '-m', 'pip', 'install', *missing]
-        subprocess.check_call(cmd)
+        try:
+            subprocess.check_call(cmd)
+        except Exception as exc:
+            # PyMuPDF is mandatory; `requests` is optional thanks to the curl fallback.
+            if 'PyMuPDF' in missing:
+                raise RuntimeError(f'Failed to install required dependency PyMuPDF: {exc}') from exc
+            print(f'[WARN] could not install requests ({exc}); will rely on curl fallback', file=sys.stderr)
+    # Re-evaluate `requests` after a possible install; None => use the curl path.
+    try:
+        import requests as _requests  # noqa: F401
+        requests = _requests
+    except Exception:
+        requests = None  # type: ignore
 
 
 ensure_deps()
-import requests  # type: ignore
 import fitz  # type: ignore
+
+
+def _curl_fetch_text(url, params=None, timeout=30):
+    """Fetch a URL body as text via curl (web-search-fallback Route 1 & 4)."""
+    if not CURL_BIN:
+        raise RuntimeError('curl not found on PATH')
+    full_url = url
+    if params:
+        full_url = f'{url}?{urllib.parse.urlencode(params)}'
+    proc = subprocess.run(
+        [CURL_BIN, '-sL', '--max-time', str(int(timeout)), '-A', 'paper-html-onepage/1.0', full_url],
+        capture_output=True,
+        timeout=timeout + 15,
+    )
+    if proc.returncode != 0:
+        raise RuntimeError(f'curl exited with code {proc.returncode}')
+    body = proc.stdout.decode('utf-8', errors='replace')
+    if not body.strip():
+        raise RuntimeError('curl returned an empty body')
+    return body
+
+
+def _curl_download_file(url, out_path, timeout=120):
+    """Download a binary file via curl (fallback for requests streaming)."""
+    if not CURL_BIN:
+        raise RuntimeError('curl not found on PATH')
+    proc = subprocess.run(
+        [CURL_BIN, '-sL', '--max-time', str(int(timeout)), '-A', 'paper-html-onepage/1.0', '-o', out_path, url],
+        capture_output=True,
+        timeout=timeout + 30,
+    )
+    if proc.returncode != 0 or not os.path.exists(out_path) or os.path.getsize(out_path) == 0:
+        raise RuntimeError(f'curl download failed (exit {proc.returncode})')
+    return out_path
+
+
+def _http_get_text(url, params=None, timeout=25):
+    """GET text with a graceful requests -> curl fallback."""
+    if requests is not None:
+        try:
+            resp = requests.get(url, params=params, timeout=timeout)
+            resp.raise_for_status()
+            return resp.text
+        except Exception as exc:
+            print(f'[WARN] requests GET failed for {url} ({exc}); trying curl fallback', file=sys.stderr)
+    return _curl_fetch_text(url, params=params, timeout=timeout)
 
 
 ARXIV_API = 'http://export.arxiv.org/api/query'
@@ -47,9 +112,8 @@ def search_arxiv(query: str, max_results: int = 5):
         'sortBy': 'relevance',
         'sortOrder': 'descending',
     }
-    resp = requests.get(ARXIV_API, params=params, timeout=25)
-    resp.raise_for_status()
-    root = ET.fromstring(resp.text)
+    text = _http_get_text(ARXIV_API, params=params, timeout=25)
+    root = ET.fromstring(text)
     ns = {'atom': 'http://www.w3.org/2005/Atom'}
     entries = []
     for e in root.findall('atom:entry', ns):
@@ -84,12 +148,11 @@ def search_arxiv(query: str, max_results: int = 5):
 def fetch_arxiv_by_id(arxiv_id: str):
     params = {'id_list': arxiv_id.strip()}
     try:
-        resp = requests.get(ARXIV_API, params=params, timeout=25)
-        resp.raise_for_status()
-    except requests.RequestException as exc:
+        text = _http_get_text(ARXIV_API, params=params, timeout=25)
+    except Exception as exc:
         print(f'[WARN] arXiv metadata fetch failed for {arxiv_id}: {exc}', file=sys.stderr)
         return None
-    root = ET.fromstring(resp.text)
+    root = ET.fromstring(text)
     ns = {'atom': 'http://www.w3.org/2005/Atom'}
     e = root.find('atom:entry', ns)
     if e is None:
@@ -122,12 +185,20 @@ def fetch_arxiv_by_id(arxiv_id: str):
 
 
 def download_pdf(url: str, out_path: str):
-    with requests.get(url, stream=True, timeout=60) as r:
-        r.raise_for_status()
-        with open(out_path, 'wb') as f:
-            for chunk in r.iter_content(chunk_size=1024 * 64):
-                if chunk:
-                    f.write(chunk)
+    if requests is not None:
+        try:
+            with requests.get(url, stream=True, timeout=60) as r:
+                r.raise_for_status()
+                with open(out_path, 'wb') as f:
+                    for chunk in r.iter_content(chunk_size=1024 * 64):
+                        if chunk:
+                            f.write(chunk)
+            if os.path.exists(out_path) and os.path.getsize(out_path) > 0:
+                return
+            raise RuntimeError('downloaded file is empty')
+        except Exception as exc:
+            print(f'[WARN] requests download failed for {url} ({exc}); trying curl fallback', file=sys.stderr)
+    _curl_download_file(url, out_path)
 
 
 def extract_pdf_text(pdf_path: str, max_pages: int = 80):
@@ -1391,6 +1462,57 @@ def ensure_local_source_pdf(pdf_path, target_pdf_path):
     return dest_abs, True
 
 
+def build_from_url(url, out_path, max_pages, keep_pdf, keep_fulltext_html):
+    # Accept arXiv abs/pdf pages or any direct PDF link. Resolve to a real PDF URL.
+    arxiv_match = re.search(r'(\d{4}\.\d{4,5})(?:v\d+)?', url)
+    arxiv_id = arxiv_match.group(1) if arxiv_match else ''
+    pdf_url = url
+    if arxiv_id and '/abs/' in url:
+        pdf_url = url.replace('/abs/', '/pdf/')
+        if not pdf_url.endswith('.pdf'):
+            pdf_url += '.pdf'
+
+    # Download to a temp file first so metadata can drive the output filename.
+    fd, tmp_pdf = tempfile.mkstemp(prefix='paper_', suffix='.pdf')
+    os.close(fd)
+    try:
+        download_pdf(pdf_url, tmp_pdf)
+    except Exception as exc:
+        cleanup_file_quietly(tmp_pdf)
+        raise RuntimeError(f'Failed to download {pdf_url} via requests and curl: {exc}') from exc
+
+    full_text, pages_read, page_texts = extract_pdf_text(tmp_pdf, max_pages=max_pages)
+
+    # Prefer arXiv metadata; otherwise derive title/abstract from the PDF itself.
+    meta = fetch_arxiv_by_id(arxiv_id) if arxiv_id else None
+    if not meta:
+        meta = extract_pdf_meta(tmp_pdf, page_texts)
+    meta.setdefault('pdf_url', pdf_url)
+    meta.setdefault('abs_url', f'https://arxiv.org/abs/{arxiv_id}' if arxiv_id else url)
+
+    out_path = choose_output_path(meta, out_path, '')
+    out_path, html_full_path = derive_intermediate_paths(out_path)
+    os.makedirs(os.path.dirname(os.path.abspath(out_path)), exist_ok=True)
+    semantic_pdf_path = choose_pdf_path_for_output(out_path)
+
+    render_fulltext_html(meta, full_text, pages_read, html_full_path)
+    render_onepage_html(meta, full_text, pages_read, out_path)
+
+    kept_pdf = ''
+    if keep_pdf:
+        shutil.copy2(tmp_pdf, semantic_pdf_path)
+        kept_pdf = semantic_pdf_path
+    cleanup_file_quietly(tmp_pdf)
+
+    if keep_fulltext_html:
+        print(f'[OK] fulltext html: {html_full_path}')
+    else:
+        cleanup_file_quietly(html_full_path)
+    if kept_pdf:
+        print(f'[OK] source pdf kept: {kept_pdf}')
+    return out_path
+
+
 def build_from_query(query, out_path, max_pages, pick, keep_pdf, keep_fulltext_html):
     cands = search_arxiv(query, max_results=max(5, pick))
     if not cands:
@@ -1451,6 +1573,7 @@ def main():
     ap = argparse.ArgumentParser(description='Keyword to one-page paper HTML summary.')
     ap.add_argument('--query', help='search keyword for arXiv')
     ap.add_argument('--pdf', help='local PDF path (skip search)')
+    ap.add_argument('--url', help='direct paper URL (arXiv abs/pdf or any PDF link); downloads with requests -> curl fallback')
     ap.add_argument('--reflection', help='local markdown/txt reflection path; preserve content and render as one-page reflection html')
     ap.add_argument('--out', help='output html path; if omitted, auto-name from detected paper keyword/title')
     ap.add_argument('--max-pages', type=int, default=80)
@@ -1483,9 +1606,11 @@ def main():
         final_out = build_from_reflection(args.reflection, args.out)
     elif args.pdf:
         final_out = build_from_pdf(args.pdf, args.out, args.max_pages, args.keep_fulltext_html)
+    elif args.url:
+        final_out = build_from_url(args.url, args.out, args.max_pages, args.keep_pdf, args.keep_fulltext_html)
     else:
         if not args.query:
-            raise SystemExit('Provide --query, --pdf, --reflection, or use --compare.')
+            raise SystemExit('Provide --query, --pdf, --url, --reflection, or use --compare.')
         final_out = build_from_query(args.query, args.out, args.max_pages, args.pick, args.keep_pdf, args.keep_fulltext_html)
 
     if not args.compare:
